@@ -451,7 +451,6 @@ static int config_opengl_mask(int width, int height, PoseContext *s, CudaFunctio
     if (mask_path.back() != '/') mask_path += '/';
     mask_path += "medmask.obj";
 
-    string path = "medmask.obj";
     Assimp::Importer importer;
     const aiScene *scene = importer.ReadFile(mask_path, aiProcess_Triangulate | aiProcess_FlipUVs);
     if (!scene) {

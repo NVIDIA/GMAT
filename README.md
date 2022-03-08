@@ -11,7 +11,7 @@ Requirements:
 * CUDA >= 11.0
 
 Run\
-`cd ffmpeg-gpu`
+`cd ffmpeg-gpu`\
 `bash config_ffmpeg_libtorch.sh && make`\
 to config and build the code. You can modify the `config_ffmpeg_libtorch.sh` file to add additional configure options, e.g. --enable-libx264.
 
