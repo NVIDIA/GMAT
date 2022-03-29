@@ -3068,6 +3068,8 @@ pose_filter_deps="cuda_nvcc opengl"
 pose_filter_extralibs="-Wl,--no-as-needed -ltorch -ltorch_cuda -ltorch_cpu -lc10 -lc10_cuda -ltorchvision
 -lnvrtc -lnvToolsExt -lcudart -lcuda -lonnxruntime -lstdc++ -lEGL -lGL -lX11 -lpthread -lXrandr -lXi -lassimp"
 format_cuda_filter_extralibs="-lcudart -lcuda -lstdc++"
+cvtColor_cuda_filter_deps="cuda_nvcc"
+cvtColor_cuda_filter_extralibs="-lcv_cuda"
 # tensorrt_filter_deps_any="cuda_nvcc cuda_llvm"
 
 amf_deps_any="libdl LoadLibrary"

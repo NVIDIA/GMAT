@@ -220,6 +220,7 @@ OBJS-$(CONFIG_CROP_FILTER)                   += vf_crop.o
 OBJS-$(CONFIG_CROPDETECT_FILTER)             += vf_cropdetect.o
 OBJS-$(CONFIG_CUE_FILTER)                    += f_cue.o
 OBJS-$(CONFIG_CURVES_FILTER)                 += vf_curves.o
+OBJS-$(CONFIG_CVTCOLOR_CUDA_FILTER)          += vf_cvtColor_cuda.o
 OBJS-$(CONFIG_DATASCOPE_FILTER)              += vf_datascope.o
 OBJS-$(CONFIG_DBLUR_FILTER)                  += vf_dblur.o
 OBJS-$(CONFIG_DCTDNOIZ_FILTER)               += vf_dctdnoiz.o

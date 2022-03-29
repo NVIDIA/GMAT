@@ -207,6 +207,7 @@ extern AVFilter ff_vf_crop;
 extern AVFilter ff_vf_cropdetect;
 extern AVFilter ff_vf_cue;
 extern AVFilter ff_vf_curves;
+extern AVFilter ff_vf_cvtColor_cuda;
 extern AVFilter ff_vf_datascope;
 extern AVFilter ff_vf_dblur;
 extern AVFilter ff_vf_dctdnoiz;
