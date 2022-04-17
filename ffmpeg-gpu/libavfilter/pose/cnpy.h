@@ -270,3 +270,10 @@ namespace cnpy {
 
 }
 
+#ifdef __cpluscplus
+extern "C"{
+#endif
+    cnpy::NpyArray npy_load(const char* fname);
+#ifdef __cpluscplus
+} // extern "C"
+#endif

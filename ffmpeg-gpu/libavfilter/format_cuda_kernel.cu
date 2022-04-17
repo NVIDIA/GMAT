@@ -10,6 +10,7 @@
 */
 
 #include <cstddef>
+#include <cstdint>
 #include <stdint.h>
 #include <stdio.h>
 #ifdef __cplusplus
@@ -17,12 +18,12 @@ extern "C"
 {
 #endif
 #include <cuda.h>
-#include "format_cuda.h"
 
 #include "libavutil/pixfmt.h"
 #ifdef __cplusplus
 }
 #endif
+#include "format_cuda.h"
 
 __constant__ float matYuv2Rgb[3][3];
 __constant__ float matRgb2Yuv[3][3];
@@ -102,16 +103,16 @@ __device__ static T Clamp(T x, T lower, T upper) {
 
 template<class Rgb, class YuvUnit>
 __device__ inline Rgb YuvToRgbForPixel(YuvUnit y, YuvUnit u, YuvUnit v) {
-    const int 
+    const int
         low = 1 << (sizeof(YuvUnit) * 8 - 4),
         mid = 1 << (sizeof(YuvUnit) * 8 - 1);
     float fy = (int)y - low, fu = (int)u - mid, fv = (int)v - mid;
     const float maxf = (1 << sizeof(YuvUnit) * 8) - 1.0f;
-    YuvUnit 
+    YuvUnit
         r = (YuvUnit)Clamp(matYuv2Rgb[0][0] * fy + matYuv2Rgb[0][1] * fu + matYuv2Rgb[0][2] * fv, 0.0f, maxf),
         g = (YuvUnit)Clamp(matYuv2Rgb[1][0] * fy + matYuv2Rgb[1][1] * fu + matYuv2Rgb[1][2] * fv, 0.0f, maxf),
         b = (YuvUnit)Clamp(matYuv2Rgb[2][0] * fy + matYuv2Rgb[2][1] * fu + matYuv2Rgb[2][2] * fv, 0.0f, maxf);
-    
+
     Rgb rgb{};
     const int nShift = abs((int)sizeof(YuvUnit) - (int)sizeof(rgb.c.r)) * 8;
     if (sizeof(YuvUnit) >= sizeof(rgb.c.r)) {
@@ -128,16 +129,16 @@ __device__ inline Rgb YuvToRgbForPixel(YuvUnit y, YuvUnit u, YuvUnit v) {
 
 template<>
 __device__ inline RGBAF32 YuvToRgbForPixel(uint8_t y, uint8_t u, uint8_t v) {
-    const int 
+    const int
         low = 1 << (sizeof(uint8_t) * 8 - 4),
         mid = 1 << (sizeof(uint8_t) * 8 - 1);
     float fy = (int)y - low, fu = (int)u - mid, fv = (int)v - mid;
     const float maxf = (1 << sizeof(uint8_t) * 8) - 1.0f;
-    uint8_t 
+    uint8_t
         r = (uint8_t)Clamp(matYuv2Rgb[0][0] * fy + matYuv2Rgb[0][1] * fu + matYuv2Rgb[0][2] * fv, 0.0f, maxf),
         g = (uint8_t)Clamp(matYuv2Rgb[1][0] * fy + matYuv2Rgb[1][1] * fu + matYuv2Rgb[1][2] * fv, 0.0f, maxf),
         b = (uint8_t)Clamp(matYuv2Rgb[2][0] * fy + matYuv2Rgb[2][1] * fu + matYuv2Rgb[2][2] * fv, 0.0f, maxf);
-    
+
     RGBAF32 rgb{};
 
     rgb.c.r = r / maxf;
@@ -166,7 +167,7 @@ __global__ static void YuvToRgbKernel(uint8_t *pYuv, int nYuvPitch, uint8_t *pRg
         YuvToRgbForPixel<Rgb>(l0.y, ch.x, ch.y).d,
     };
     *(RgbIntx2 *)(pDst + nRgbPitch) = RgbIntx2 {
-        YuvToRgbForPixel<Rgb>(l1.x, ch.x, ch.y).d, 
+        YuvToRgbForPixel<Rgb>(l1.x, ch.x, ch.y).d,
         YuvToRgbForPixel<Rgb>(l1.y, ch.x, ch.y).d,
     };
 }
@@ -223,8 +224,8 @@ __global__ static void YuvToRgbPlanarKernel(uint8_t *pYuv, int nYuvPitch, uint8_
 }
 
 template<class YuvUnitx2, class Rgb, class RgbUnitx2>
-__global__ static void YuvToRgbPlanarKernel(uint8_t *pY, uint8_t *pUV, int yLinesize, int uvLinesize, 
-                                            uint8_t *pR, uint8_t *pG, uint8_t *pB, int rgbpLinesize, 
+__global__ static void YuvToRgbPlanarKernel(uint8_t *pY, uint8_t *pUV, int yLinesize, int uvLinesize,
+                                            uint8_t *pR, uint8_t *pG, uint8_t *pB, int rgbpLinesize,
                                             int nWidth, int nHeight) {
     int x = (threadIdx.x + blockIdx.x * blockDim.x) * 2;
     int y = (threadIdx.y + blockIdx.y * blockDim.y) * 2;
@@ -238,7 +239,7 @@ __global__ static void YuvToRgbPlanarKernel(uint8_t *pY, uint8_t *pUV, int yLine
     YuvUnitx2 l0 = *(YuvUnitx2 *)pSrcY;
     YuvUnitx2 l1 = *(YuvUnitx2 *)(pSrcY + yLinesize);
     YuvUnitx2 ch = *(YuvUnitx2 *)(pSrcUV);
-    
+
     // if (x == 0 && y == 0) printf("Y[0], U[0], V[0] = %d, %d, %d\n", l0.x, ch.x, ch.y);
 
     Rgb rgb0 = YuvToRgbForPixel<Rgb>(l0.x, ch.x, ch.y),
@@ -457,7 +458,7 @@ __global__ static void RgbToYuvKernel(uint8_t *pRgb, int nRgbPitch, uint8_t *pYu
         RgbToY<decltype(YuvUnitx2::x)>(rgb[3].c.r, rgb[3].c.g, rgb[3].c.b),
     };
     *(YuvUnitx2 *)(pDst + (nHeight - y / 2) * nYuvPitch) = YuvUnitx2 {
-        RgbToU<decltype(YuvUnitx2::x)>(r, g, b), 
+        RgbToU<decltype(YuvUnitx2::x)>(r, g, b),
         RgbToV<decltype(YuvUnitx2::x)>(r, g, b),
     };
 }
@@ -510,7 +511,7 @@ __global__ static void RgbpToYuvKernel(uint8_t *pRgb, int nRgbPitch, uint8_t *pY
         RgbToY<decltype(YuvUnitx2::x)>(int2bR.y, int2bG.y, int2bG.y),
     };
     *(YuvUnitx2 *)(pDst + (nHeight - y / 2) * nYuvPitch) = YuvUnitx2 {
-        RgbToU<decltype(YuvUnitx2::x)>(r, g, b), 
+        RgbToU<decltype(YuvUnitx2::x)>(r, g, b),
         RgbToV<decltype(YuvUnitx2::x)>(r, g, b),
     };
 }
@@ -531,9 +532,23 @@ void nv12_to_rgbpf32(CUstream stream, uint8_t **dp_nv12, int *nv12_pitch, uint8_
     SetMatYuv2Rgb(matrix, stream);
     YuvToRgbPlanarKernel<uchar2, RGBAF32, float2>
     <<<dim3((width + 63) / 32 / 2, (height + 3) / 2 / 2), dim3(32, 2), 0, stream>>>
-    (dp_nv12[0], dp_nv12[1], nv12_pitch[0], nv12_pitch[1], dp_rgbpf32[0], dp_rgbpf32[1], 
+    (dp_nv12[0], dp_nv12[1], nv12_pitch[0], nv12_pitch[1], dp_rgbpf32[0], dp_rgbpf32[1],
         dp_rgbpf32[2], rgbpf32_pitch[0], width, height);
 }
+
+// void nv12_to_rgbpf32(CUstream stream, uint8_t **dp_nv12, int *nv12_pitch, uint8_t *dp_rgbpf32, int rgbpf32_pitch, int width, int height, int matrix)
+// {
+//     uint8_t* dp_rgbpf32_data[3];
+//     dp_rgbpf32_data[0] = dp_rgbpf32;
+//     dp_rgbpf32_data[1] = dp_rgbpf32 + rgbpf32_pitch * height;
+//     dp_rgbpf32_data[2] = dp_rgbpf32 + rgbpf32_pitch * height * 2;
+
+//     SetMatYuv2Rgb(matrix, stream);
+//     YuvToRgbPlanarKernel<uchar2, RGBAF32, float2>
+//     <<<dim3((width + 63) / 32 / 2, (height + 3) / 2 / 2), dim3(32, 2), 0, stream>>>
+//     (dp_nv12[0], dp_nv12[1], nv12_pitch[0], nv12_pitch[1], dp_rgbpf32_data[0], dp_rgbpf32_data[1],
+//         dp_rgbpf32_data[2], rgbpf32_pitch, width, height);
+// }
 
 // void nv12_to_rgbpf32chw(CUStream stream, uint8_t **dp_nv12, int *nv12_pitch, uint8_t **dp_rgbpf32, int *rgbpf32_pitch, int width, int height, int matrix)
 void rgbpf32_to_nv12(CUstream stream, uint8_t **dp_rgbpf32, int *rgbpf32_pitch, uint8_t **dp_nv12, int *nv12_pitch, int width, int height, int matrix)
