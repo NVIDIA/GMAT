@@ -1,0 +1,5 @@
+ffmpeg-gpu
+doc
+.git
+libtorch*
+cv-cuda*
