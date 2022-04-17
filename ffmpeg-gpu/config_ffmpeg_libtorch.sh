@@ -8,5 +8,5 @@ TORCH_LIBPATH=$TORCH_ROOT/lib
 --enable-libtensorrt --enable-libopencv \
 --extra-ldflags=-L$TORCH_LIBPATH \
 --extra-cflags="$TORCH_INCPATH" \
---nvccflags="-gencode arch=compute_75,code=sm_75 -lineinfo -Xcompiler -fPIC" \
+--nvccflags="-gencode arch=compute_75,code=sm_75 -lineinfo -Xcompiler -fPIC -I./ $TORCH_INCPATH" \
 # --disable-stripping
