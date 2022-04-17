@@ -339,5 +339,15 @@ cnpy::NpyArray cnpy::npy_load(std::string fname) {
     return arr;
 }
 
+#ifdef __cpluscplus
+extern "C"{
+#endif
 
+    cnpy::NpyArray npy_load(const char* fname) {
+        std::string fname_string{fname};
+        return cnpy::npy_load(fname_string);
+    }
 
+#ifdef __cpluscplus
+} // extern "C"
+#endif

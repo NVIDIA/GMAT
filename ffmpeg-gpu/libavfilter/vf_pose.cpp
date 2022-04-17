@@ -205,15 +205,15 @@ static void load_ort(OrtContext *s, char *model_path, array<int64_t, 3> image_sh
     Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,
                  instanceName.c_str());
     OrtEnv* env_ptr = (OrtEnv*)(env);
-    OrtCUDAProviderOptions cuda_provider_options{0};
-    cuda_provider_options.cudnn_conv_algo_search = EXHAUSTIVE;
+    OrtCUDAProviderOptions cuda_provider_options{};
+    cuda_provider_options.cudnn_conv_algo_search = (enum OrtCudnnConvAlgoSearch)0;
     cuda_provider_options.gpu_mem_limit = 16 * 1024 * 1024 * 1024ul; // 16 GB
     // ffmpeg only uses default stream
     cuda_provider_options.do_copy_in_default_stream = 1;
 
     cuda_provider_options.default_memory_arena_cfg = arena_cfg;
     sessionOptions.AppendExecutionProvider_CUDA(cuda_provider_options);
-    sessionOptions.SetGraphOptimizationLevel(ORT_DISABLE_ALL);
+    sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
     assert(api.CreateAndRegisterAllocator(env_ptr, *info_cuda, arena_cfg)==nullptr);
 
     s->ort_session = new Session(env, model_path, sessionOptions);
@@ -266,7 +266,7 @@ static const AVOption pose_options[] = {
 
 AVFILTER_DEFINE_CLASS(pose);
 
-void print(const glm::mat4 &m, std::string name) {
+static void print(const glm::mat4 &m, std::string name) {
     std::cout << name << "=np.asarray([";
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
@@ -277,18 +277,18 @@ void print(const glm::mat4 &m, std::string name) {
     std::cout << "]).reshape(4, 4)" << std::endl;
 }
 
-void ck_egl(EGLBoolean ret) {
-    if (ret) return;
-    cout << "EGL error" << endl;
-	EGLint error = eglGetError();
-	if (error != EGL_SUCCESS) {
-		stringstream s;
-		s << "EGL error 0x" << std::hex << error;
-		throw runtime_error(s.str());
-	}
-}
+// static void ck_egl(EGLBoolean ret) {
+//     if (ret) return;
+//     cout << "EGL error" << endl;
+// 	EGLint error = eglGetError();
+// 	if (error != EGL_SUCCESS) {
+// 		stringstream s;
+// 		s << "EGL error 0x" << std::hex << error;
+// 		throw runtime_error(s.str());
+// 	}
+// }
 
-void assertEGLError(const std::string& msg) {
+static void assertEGLError(const std::string& msg) {
 	EGLint error = eglGetError();
 
 	if (error != EGL_SUCCESS) {

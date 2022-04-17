@@ -297,10 +297,10 @@ static void cuda_device_uninit(AVHWDeviceContext *device_ctx)
         CudaFunctions *cu = hwctx->internal->cuda_dl;
 
         if (hwctx->internal->is_allocated && hwctx->cuda_ctx) {
-            if (hwctx->internal->flags & AV_CUDA_USE_PRIMARY_CONTEXT)
+            // if (hwctx->internal->flags & AV_CUDA_USE_PRIMARY_CONTEXT)
                 CHECK_CU(cu->cuDevicePrimaryCtxRelease(hwctx->internal->cuda_device));
-            else
-                CHECK_CU(cu->cuCtxDestroy(hwctx->cuda_ctx));
+            // else
+                // CHECK_CU(cu->cuCtxDestroy(hwctx->cuda_ctx));
 
             hwctx->cuda_ctx = NULL;
         }
@@ -340,7 +340,7 @@ error:
 static int cuda_context_init(AVHWDeviceContext *device_ctx, int flags) {
     AVCUDADeviceContext *hwctx = device_ctx->hwctx;
     CudaFunctions *cu;
-    CUcontext dummy;
+    // CUcontext dummy;
     int ret, dev_active = 0;
     unsigned int dev_flags = 0;
 
@@ -375,12 +375,18 @@ static int cuda_context_init(AVHWDeviceContext *device_ctx, int flags) {
         if (ret < 0)
             return ret;
     } else {
-        ret = CHECK_CU(cu->cuCtxCreate(&hwctx->cuda_ctx, desired_flags,
-                                       hwctx->internal->cuda_device));
+        ret = CHECK_CU(cu->cuDevicePrimaryCtxSetFlags(hwctx->internal->cuda_device, desired_flags));
         if (ret < 0)
             return ret;
 
-        CHECK_CU(cu->cuCtxPopCurrent(&dummy));
+        cudaSetDevice(hwctx->internal->cuda_device);
+        ret = CHECK_CU(cu->cuDevicePrimaryCtxRetain(&hwctx->cuda_ctx, hwctx->internal->cuda_device));
+        // ret = CHECK_CU(cu->cuCtxCreate(&hwctx->cuda_ctx, desired_flags,
+        //                                hwctx->internal->cuda_device));
+        if (ret < 0)
+            return ret;
+
+        // CHECK_CU(cu->cuCtxPopCurrent(&dummy));
     }
 
     hwctx->internal->is_allocated = 1;
