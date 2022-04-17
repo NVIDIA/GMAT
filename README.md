@@ -1,25 +1,44 @@
 FFmpeg GPU Demo
 ==========================
-This demo shows a ffmpeg-based full-GPU rendering and inference pipeline. The code is based on ffmpeg release 4.4.
+This demo shows a ffmpeg-based full-GPU rendering and inference pipeline. The code is based on ffmpeg release 4.4. The project is composed of several new filters in FFmpeg, a clip rendered by these filters is demonstrated in Fig 1.
 
-## Build
-Requirements:
-* PyTorch >= 1.9.1
-* TensoRT >= 8.0.1
-* onnxruntime-gpu 1.8.1
-* Eigen 3.4.0
-* CUDA >= 11.0
+![Fig 1](doc/images/rio_360_mask_10s.gif)|
+|:--:|
+| *Fig 1 Clip rendered by FFmpeg GPU Demo* |
 
-Run\
-`cd ffmpeg-gpu`\
-`bash config_ffmpeg_libtorch.sh && make`\
-to config and build the code. You can modify the `config_ffmpeg_libtorch.sh` file to add additional configure options, e.g. --enable-libx264.
+## Features
+* [Pose filter](doc/Pose_Filter.md) (putting a mask on everyone's face)
+* [TensorRT filter](doc/Tensorrt_Filter.md)
 
-## Run the pipeline
-The code provides an ESRGAN super-resolution model (ESRGAN_x4_dynamic.onnx) just for reference. Before running the pipeline, please convert the ONNX model to a TRT engine using `trtexec`. Download the [img2pose model](https://drive.google.com/file/d/1OvnZ7OUQFg2bAgFADhT7UnCkSaXst10O/view) and unzip the model. The img2pose model can be run directly by onnxruntime, no need to convert.
+We are still actively developing this project, and we will continuously update this list. Please refer to the documents for details of each feature, including how to build and run them.
 
-Use the following command to run the pipeline:\
-`ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="./ESRGAN_x4.trt",format_cuda=nv12,scale_npp=1920:1080 -c:v h264_nvenc <output>`
+It should be noted that __the purpose of this project is demonstration__. As the name *FFmpeg GPU __Demo__* indicates, we would like to show you how to build such a pipeline, rather than building a product or turn-key solution.
 
-This is the first version of the pipeline, we expect bugs and errors, feel free to communicate with us if you have any problems.
+## Getting started
+The project has complex dependencies, we offer a Dockerfile to quickly deploy the environment. We assumed that you have installed the [NVIDIA GPU driver](https://www.nvidia.com/download/index.aspx) and [nvidia-docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
+You can enable all the features following the commands below:
+```bash
+git clone https://github.com/NVIDIA/FFmpeg-GPU-Demo.git
+docker pull nvcr.io/nvidia/pytorch:22.03-py3
+cd ffmpeg-gpu-demo
+docker build -t ffmpeg-gpu-demo:22.03-py3 --build-arg TAG=22.03-py3 .
+docker run --gpus all -it --rm -e NVIDIA_DRIVER_CAPABILITIES=all -v $(pwd):/workspace/ffmpeg-gpu-demo ffmpeg-gpu-demo:22.03-py3
+cd ffmpeg-gpu-demo/ffmpeg-gpu/
+bash config_ffmpeg_libtorch.sh
+make -j10
+make install
+```
+If you just want a specific feature, please refer to the feature's doc for simplified building. We will provide a complete docker image in the future, so that you can pull & run directly.
 
+Our project provides a AI+graphics pipeline in FFmpeg, as shown in the GIF above. Sample command:
+```bash
+ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf scale_npp=1280:720,pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="./onnx_models/ESRGAN_x4_dynamic.onnx",format_cuda=nv12 -c:v h264_nvenc <output>
+```
+Please refer to the [pose filter doc](doc/Pose_Filter.md) for how to run the pipeline.
+
+## Additional Resources
+If you are interested in the tech details of our project, check out our GTC 2022 talk: [AI-based Cloud Rendering: Full-GPU Pipeline in FFmpeg](https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41609/)
+
+FFmpeg GPU Demo is first developed by NVIDIA DevTech & SA team, and currently maintained by Xiaowei Wang. Authors include Yiming Liu, Jinzhong(Thor) Wu and Xiaowei Wang.
+
+FFmpeg GPU Demo is under MIT license, check out the [LICENSE](LICENSE.md) for details.
