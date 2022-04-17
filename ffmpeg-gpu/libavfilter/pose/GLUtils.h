@@ -20,10 +20,12 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+#pragma once
 
 #define GL_GLEXT_PROTOTYPES 1
 #include <GL/gl.h>
 #include <GL/glext.h>
+#include <EGL/egl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -33,6 +35,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_STATIC
 #include "stb_image.h"
 
 class Shader {
@@ -299,7 +302,7 @@ public:
     }
 };
 
-GLenum glCheckError_(const char *file, int line)
+static GLenum glCheckError_(const char *file, int line)
 {
     GLenum errorCode;
     while ((errorCode = glGetError()) != GL_NO_ERROR)
@@ -320,3 +323,14 @@ GLenum glCheckError_(const char *file, int line)
     return errorCode;
 }
 #define glCheckError() glCheckError_(__FILE__, __LINE__)
+
+static void ck_egl(EGLBoolean ret) {
+    if (ret) return;
+    cout << "EGL error" << endl;
+	EGLint error = eglGetError();
+	if (error != EGL_SUCCESS) {
+		stringstream s;
+		s << "EGL error 0x" << std::hex << error;
+		throw runtime_error(s.str());
+	}
+}
