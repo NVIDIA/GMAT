@@ -28,7 +28,7 @@ RUN apt-get update \
     && cd .. \
     && rm -r eigen* \
     && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt install -y libassimp-dev assimp-utils libglm-dev libsdl2-dev \
-    rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/FFmpeg/nv-codec-headers.git \
     && cd nv-codec-headers \
