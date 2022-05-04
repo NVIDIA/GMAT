@@ -32,7 +32,7 @@ uniform mat4 projection;
 void main() {
     // vec4 p = projection * vec4(aPos, 1.0f);
     // gl_Position = vec4(p.x, -p.y, p.z, 1.0f);
-    gl_Position = vec4(aPos.x / W * 2 - 1.0f, -aPos.y / H * 2 + 1.0f, aPos.z / 10000.0f, 1.0f);
+    gl_Position = vec4(aPos.x / W * 2 - 1.0f, aPos.y / H * 2 - 1.0f, aPos.z / 10000.0f, 1.0f);
     texPos = vec2((gl_Position.x + 1.0f) / 2, (gl_Position.y + 1.0f) / 2);
 }
 )###";

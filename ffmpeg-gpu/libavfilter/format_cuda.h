@@ -55,6 +55,13 @@ union RGBAF32 {
     } c;
 };
 
+union BGRAF32 {
+    float4 v;
+    struct {
+        float b, g, r, a;
+    } c;
+};
+
 #ifdef __cplusplus
 template <class COLOR32>
 void Nv12ToColor32(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
@@ -66,7 +73,15 @@ void Color32ToNv12(uint8_t *dpBgra, int nBgraPitch, uint8_t *dpNv12, int nNv12Pi
 extern "C"
 {
 #endif
-void nv12_to_rgbpf32(CUstream stream, uint8_t **dp_nv12, int *nv12_pitch, uint8_t **dp_rgbpf32, int *rgbpf32_pitch, int width, int height, int matrix);
+void nv12_to_rgbpf32(CUstream stream, uint8_t **dp_nv12, int *nv12_pitch, uint8_t **dp_rgbpf32, int *rgbpf32_pitch,
+    int width, int height, int matrix);
+
+void nv12_to_rgbpf32_shift(CUstream stream, uint8_t **dp_nv12, int *nv12_pitch, uint8_t **dp_rgbpf32, int *rgbpf32_pitch,
+    int width, int height, float norm, float* shift, int matrix);
+
+void nv12_to_bgrpf32_shift(CUstream stream, uint8_t **dp_nv12, int *nv12_pitch, uint8_t **dp_rgbpf32, int *rgbpf32_pitch,
+    int width, int height, float norm, float* shift, int matrix);
+
 // void nv12_to_rgbpf32(CUstream stream, uint8_t **dp_nv12, int *nv12_pitch, uint8_t *dp_rgbpf32, int rgbpf32_pitch, int width, int height, int matrix);
 void rgbpf32_to_nv12(CUstream stream, uint8_t **dp_rgbpf32, int *rgbpf32_pitch, uint8_t **dp_nv12, int *nv12_pitch, int width, int height, int matrix);
 #ifdef __cplusplus
