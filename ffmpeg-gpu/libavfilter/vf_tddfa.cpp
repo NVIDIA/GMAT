@@ -67,6 +67,7 @@ extern "C"
 #include "libavutil/log.h"
 #include "libavutil/error.h"
 #include "libavutil/pixfmt.h"
+#include "libavutil/pixdesc.h"
 
 #include "cuda/check_util.h"
 
@@ -336,6 +337,12 @@ static int config_props(AVFilterLink *outlink) {
     int h = inlink->h;
     s->model_w = w;
     s->model_h = h;
+
+    if (in_frame_ctx->sw_format != AV_PIX_FMT_NV12) {
+        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n", 
+                av_get_pix_fmt_name(in_frame_ctx->sw_format));
+        return AVERROR(ENOSYS);
+    }
 
     FF_CU_CK(cuCtxPushCurrent(hw_ctx->cuda_ctx));
 
