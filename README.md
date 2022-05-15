@@ -23,7 +23,7 @@ It should be noted that __the purpose of this project is demonstration__. As the
 The project has complex dependencies, we offer a Dockerfile to quickly deploy the environment. We assumed that you have installed the [NVIDIA GPU driver](https://www.nvidia.com/download/index.aspx) and [nvidia-docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 You can enable all the features following the commands below:
 ```bash
-git clone https://github.com/NVIDIA/FFmpeg-GPU-Demo.git
+git clone --recursive https://github.com/NVIDIA/FFmpeg-GPU-Demo.git
 docker pull nvcr.io/nvidia/pytorch:22.03-py3
 cd ffmpeg-gpu-demo
 docker build -t ffmpeg-gpu-demo:22.03-py3 --build-arg TAG=22.03-py3 .
