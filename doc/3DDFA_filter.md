@@ -2,6 +2,10 @@
 
 This document introduces the 3DDFA filter in FFmpeg GPU Demo. The 3DDFA filter is similar to the pose filter, as it also shows how to perform inference and rendering in FFmpeg. Instead of rendering a medical mask, the 3DDFA filter can reconstruct 3D face model from the input image. 3DDFA is also opensource on [GitHub](https://github.com/cleardusk/3DDFA_V2).
 
+<p align="center">
+  <img src="./images/demo_out.gif" alt="demo" width="512px">
+</p>
+
 ## Compilation
 
 The 3DDFA filter depends on the following libraries
