@@ -23,6 +23,7 @@
 
 #include "3ddfa_kernels.h"
 // #include "common_utils.h"
+#include "libavfilter/trt_lite/trt_lite_utils.h"
 
 #include <cub/cub.cuh>
 #include <iostream>
@@ -123,7 +124,7 @@ __global__ void similar_transform_kernel_transpose(float* vertices, float* verti
     if (vertex_index >= vertices_num_channel) return;
 
     float3 xyz;
-    float vertex;
+    // float vertex;
 
     xyz.x = vertices[vertex_index + 0 * vertices_num_channel];
     xyz.x -= 1;
@@ -182,7 +183,7 @@ void similar_transform(float* d_vertices, uint32_t vertices_num, at::Tensor& roi
 
     cub::DeviceReduce::Min(cub_temp_storage, cub_temp_storage_bytes, d_vertices, cub_out, vertices_num, stream);
 
-    float* h_vertices = new float[vertices_num];
+    // float* h_vertices = new float[vertices_num];
     // cudaMemcpy(h_vertices, d_vertices, vertices_num * sizeof(float), cudaMemcpyDeviceToHost);
     // using namespace torch::indexing;
     // auto tensor_options_cuda = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCUDA);
@@ -199,7 +200,6 @@ void similar_transform(float* d_vertices, uint32_t vertices_num, at::Tensor& roi
     // DEBUG
     // cudaDeviceSynchronize();
     // float* h_vertices = new float[vertices_num];
-    // cudaMalloc(&h_vertices, vertices_num * sizeof(float));
     // cudaMemcpy(h_vertices, d_vertices, vertices_num * sizeof(float), cudaMemcpyDeviceToHost);
     // std::cout << "Vertices: \n";
     // for (int i = 0; i < 100; i++){
@@ -217,9 +217,10 @@ void similar_transform_transpose(float* d_vertices, float** d_vertices_out, uint
 
     float scale_x = (roi_box[2].item<float>() - roi_box[0].item<float>()) / size;
     float scale_y = (roi_box[3].item<float>() - roi_box[1].item<float>()) / size;
+    ck(cudaDeviceSynchronize());
 
     float* d_out;
-    cudaMalloc(&d_out, vertices_num * sizeof(float));
+    ck(cudaMalloc(&d_out, vertices_num * sizeof(float)));
     *d_vertices_out = d_out;
 
     // cub::DeviceReduce::Min(cub_temp_storage, cub_temp_storage_bytes, d_vertices, cub_out, vertices_num, stream);
@@ -228,7 +229,7 @@ void similar_transform_transpose(float* d_vertices, float** d_vertices_out, uint
     cub::DeviceReduce::Min(cub_temp_storage, cub_temp_storage_bytes, d_vertices, cub_out, vertices_num, stream);
 
     // float* h_vertices = new float[vertices_num];
-    // cudaMemcpy(h_vertices, d_vertices, vertices_num * sizeof(float), cudaMemcpyDeviceToHost);
+    // ck(cudaMemcpy(h_vertices, d_vertices, vertices_num * sizeof(float), cudaMemcpyDeviceToHost));
     // using namespace torch::indexing;
     // auto tensor_options_cuda = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCUDA);
     // torch::Tensor pts3d_tensor = torch::from_blob(d_vertices, {3, 38365}, tensor_options_cuda);
@@ -240,8 +241,17 @@ void similar_transform_transpose(float* d_vertices, float** d_vertices_out, uint
     // std::cout << "scale_x, scale_y: " << scale_x << ", " << scale_y << std::endl;
     similar_transform_kernel_transpose<<<grid_dim, block_dim, 0, stream>>>(d_vertices, d_out, vertices_num/3,
         scale_x, scale_y, roi_box[0].item<float>(), roi_box[1].item<float>(), cub_out);
-    cudaGetLastError();
-
+    ck(cudaGetLastError());
+    // DEBUG
+    // ck(cudaDeviceSynchronize());
+    // float* h_vertices = new float[vertices_num];
+    // cudaMalloc(&h_vertices, vertices_num * sizeof(float));
+    // ck(cudaMemcpy(h_vertices, *d_vertices_out, vertices_num * sizeof(float), cudaMemcpyDeviceToHost));
+    // std::cout << "Vertices: \n";
+    // for (int i = 0; i < 100; i++){
+    //     std::cout << h_vertices[i] << "  ";
+    // }
+    // std::cout << std::endl;
 }
 
 template<typename T>

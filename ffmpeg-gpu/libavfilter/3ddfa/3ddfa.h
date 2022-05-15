@@ -211,8 +211,8 @@ class TDDFA_ONNX {
 
             int roi_h = roi_box[3].item<int>() - roi_box[1].item<int>();
             int roi_w = roi_box[2].item<int>() - roi_box[0].item<int>();
-            void *d_image_120, *d_image_crop, *d_cropped;
-            cudaMallocAsync(&d_cropped, roi_h * roi_w * 3, stream);
+            // void *d_image_120, *d_image_crop, *d_cropped;
+            // cudaMallocAsync(&d_cropped, roi_h * roi_w * 3, stream);
 
             // cv::Mat image_crop = image(cv::Rect{
             //     roi_box[0].item<int>(),

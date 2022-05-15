@@ -1,14 +1,19 @@
 FFmpeg GPU Demo
 ==========================
-This demo shows a ffmpeg-based full-GPU rendering and inference pipeline. The code is based on ffmpeg release 4.4. The project is composed of several new filters in FFmpeg, a clip rendered by these filters is demonstrated in Fig 1.
+This demo shows a ffmpeg-based full-GPU rendering and inference pipeline. The code is based on ffmpeg release 4.4. The project is composed of several new filters in FFmpeg, clips rendered in real-time by these filters is demonstrated below.
 
-![Fig 1](doc/images/rio_360_mask_10s.gif)|
-|:--:|
-| *Fig 1 Clip rendered by FFmpeg GPU Demo* |
+<p align="center">
+  <img src="doc/images/rio_360_mask_10s.gif" alt="rio" width="512px">
+  <img src="doc/images/demo_out.gif" alt="demo" width="512px">
+</p>
+
+### [Updates]
+* 2022/05 3DDFA filter is added.
 
 ## Features
-* [Pose filter](doc/Pose_Filter.md) (putting a mask on everyone's face)
+* [Pose filter](doc/Pose_Filter.md) Putting a mask on everyone's face
 * [TensorRT filter](doc/Tensorrt_Filter.md)
+* [3DDFA filter](doc/3DDFA_filter.md) Recontruct 3D face using [3DDFA_v2](https://github.com/cleardusk/3DDFA_V2)
 
 We are still actively developing this project, and we will continuously update this list. Please refer to the documents for details of each feature, including how to build and run them.
 
@@ -32,7 +37,7 @@ If you just want a specific feature, please refer to the feature's doc for simpl
 
 Our project provides a AI+graphics pipeline in FFmpeg, as shown in the GIF above. Sample command:
 ```bash
-ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf scale_npp=1280:720,pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="./onnx_models/ESRGAN_x4_dynamic.onnx",format_cuda=nv12 -c:v h264_nvenc <output>
+ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf scale_npp=1280:720,pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="./ESRGAN_x4_dynamic.trt",format_cuda=nv12 -c:v h264_nvenc <output>
 ```
 Please refer to the [pose filter doc](doc/Pose_Filter.md) for how to run the pipeline.
 

@@ -23,6 +23,7 @@
 
 // #include <GL/gl.h>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <string>
 
 #include <cuda.h>
@@ -66,6 +67,7 @@ extern "C"
 #include "libavutil/log.h"
 #include "libavutil/error.h"
 #include "libavutil/pixfmt.h"
+#include "libavutil/pixdesc.h"
 
 #include "cuda/check_util.h"
 
@@ -88,12 +90,13 @@ typedef struct TddfaContext{
     FaceBoxes_ONNX *face_box;
     TDDFA_ONNX *tddfa;
 
-    int tex_image, tex_face, VAO_face, VAO_pic;
+    unsigned int tex_image, tex_face, VAO_face, VAO_pic, PBO_fb;
     size_t index_num;
     Shader *shader_face;
     Shader *shader_pic;
     cudaGraphicsResource *cuda_mesh_resource;
     cudaGraphicsResource *cuda_texture_resource;
+    cudaGraphicsResource *cuda_fb_resource;
 };
 
 #define OFFSET(x) offsetof(TddfaContext, x)
@@ -244,18 +247,26 @@ static void config_opengl(TddfaContext *s, size_t vertex_num, const char* index_
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, index.num_bytes(), index.data<int>(), GL_STATIC_DRAW);
     // cout << "number of vertices: " << index.num_vals << endl;
 
+    unsigned int PBO_fb;
+    glGenBuffers(1, &PBO_fb);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, PBO_fb);
+    glBufferData(GL_PIXEL_PACK_BUFFER, W * H * 4, NULL, GL_DYNAMIC_READ);
+
     // unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, tex_image);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
     s->tex_image = tex_image;
     s->tex_face = tex_face;
     s->VAO_face = VAO_face;
     s->VAO_pic = VAO_pic;
+    s->PBO_fb = PBO_fb;
     CUcontext current;
     FF_CU_CK(cuCtxGetCurrent(&current));
     FF_CUDA_CK(cudaGraphicsGLRegisterBuffer(&s->cuda_mesh_resource, VBO_face, cudaGraphicsRegisterFlagsNone));
-    FF_CUDA_CK(cudaGraphicsGLRegisterBuffer(&s->cuda_texture_resource, tex_image, cudaGraphicsRegisterFlagsNone));
+    FF_CUDA_CK(cudaGraphicsGLRegisterBuffer(&s->cuda_fb_resource, PBO_fb, cudaGraphicsRegisterFlagsNone));
+    FF_CUDA_CK(cudaGraphicsGLRegisterImage(&s->cuda_texture_resource, tex_image, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsNone));
     FF_CUDA_CK(cudaGetLastError());
 }
 
@@ -281,8 +292,9 @@ static av_cold int init(AVFilterContext *ctx) {
     if ((dir = opendir (s->path_opt)) != NULL) {
         /* print all the files and directories within directory */
         while ((ent = readdir(dir)) != NULL) {
-            printf ("%s\n", ent->d_name);
+            // printf ("%s\n", ent->d_name);
             std::string entry_string{ent->d_name};
+            entry_string = "/" + entry_string;
             if (entry_string.find("FaceBoxesProd") != std::string::npos) {
                 s->facebox_path = s->path_opt + entry_string;
                 continue;
@@ -321,11 +333,18 @@ static int config_props(AVFilterLink *outlink) {
     AVHWFramesContext *out_ctx;
     CUcontext dummy;
     int ret;
+    std::string vert_path{s->path_opt};
 
     int w = inlink->w;
     int h = inlink->h;
     s->model_w = w;
     s->model_h = h;
+
+    if (in_frame_ctx->sw_format != AV_PIX_FMT_NV12) {
+        av_log(ctx, AV_LOG_ERROR, "Unsupported input format: %s\n", 
+                av_get_pix_fmt_name(in_frame_ctx->sw_format));
+        return AVERROR(ENOSYS);
+    }
 
     FF_CU_CK(cuCtxPushCurrent(hw_ctx->cuda_ctx));
 
@@ -350,7 +369,7 @@ static int config_props(AVFilterLink *outlink) {
     if (!outlink->hw_frames_ctx)
         return AVERROR(ENOMEM);
     FF_CU_CK(cuCtxGetCurrent(&dummy));
-    std::cout << "Current context: " << dummy << ", ffmpeg context: " << hw_ctx->cuda_ctx << std::endl;
+    // std::cout << "Current context: " << dummy << ", ffmpeg context: " << hw_ctx->cuda_ctx << std::endl;
 
     s->face_box = new FaceBoxes_ONNX{s->facebox_path.c_str(), h, w};
     FF_CU_CK(cuCtxGetCurrent(&dummy));
@@ -359,14 +378,16 @@ static int config_props(AVFilterLink *outlink) {
 
     cudaMalloc(&s->d_rgbpf32_img, w * h * 3 * sizeof(float));
     cudaMalloc(&s->d_bgra_img, w * h * 4);
-    config_opengl(s, s->tddfa->vertex_num(), "rio_tri.npy", w, h, hw_ctx->stream);
+
+    vert_path += "/3dmm_verts.npy";
+    config_opengl(s, s->tddfa->vertex_num(), vert_path.c_str(), w, h, hw_ctx->stream);
 
     FF_CU_CK(cuCtxPopCurrent(&dummy));
 
     return 0;
 }
 
-void draw_on_image(TddfaContext *s, void* d_rgba_image, float* d_vertices, size_t vertices_num,
+void draw_on_image(TddfaContext *s, void* d_rgba_image, float* d_vertices, size_t vertices_num, AVFrame *out,
     const int W=1280, const int H=720, cudaStream_t stream=0){
 
     void *cuda_mapped_pointer;
@@ -412,28 +433,28 @@ void draw_on_image(TddfaContext *s, void* d_rgba_image, float* d_vertices, size_
         // cout << glGetString(check_return) << endl;
         // render
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glCheckError();
+        // glCheckError();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glCheckError();
+        // glCheckError();
 
         s->shader_pic->Use();
-        glCheckError();
+        // glCheckError();
         glActiveTexture(GL_TEXTURE0);
-        glCheckError();
+        // glCheckError();
         glBindTexture(GL_TEXTURE_2D, s->tex_image);
-        glCheckError();
+        // glCheckError();
         s->shader_pic->SetUniform("tex0", 0);
         glBindVertexArray(s->VAO_pic);
-        glCheckError();
+        // glCheckError();
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glDrawElements(GL_TRIANGLES, sizeof(indices_pic) / sizeof(indices_pic[0]), GL_UNSIGNED_INT, 0);
-        glCheckError();
+        // glCheckError();
 
         s->shader_face->Use();
         s->shader_face->SetUniform("W", (float)W);
         s->shader_face->SetUniform("H", (float)H);
         s->shader_face->SetUniform("projection", projection);
-        glCheckError();
+        // glCheckError();
 
         s->shader_face->Use();
         glActiveTexture(GL_TEXTURE0);
@@ -449,12 +470,26 @@ void draw_on_image(TddfaContext *s, void* d_rgba_image, float* d_vertices, size_
         // glfwPollEvents();
     // }
     glCheckError();
-    std::vector<std::uint8_t> buf(W * H * 3);
-    glReadPixels(0, 0, W, H, GL_RGB, GL_UNSIGNED_BYTE, buf.data());
-// #define STB_IMAGE_WRITE_IMPLEMENTATION
-// #define STB_IMAGE_STATIC
-// #include "pose/stb_image_write.h"
-    stbi_write_png("rio_out.png", W, H, 3, buf.data(), W * 3);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, s->PBO_fb);
+    glReadPixels(0, 0, W, H, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+    glFinish();
+
+    FF_CUDA_CK(cudaGraphicsMapResources(1, &s->cuda_fb_resource, stream));
+    FF_CUDA_CK(cudaGraphicsResourceGetMappedPointer(&cuda_mapped_pointer, &cuda_mapped_size, s->cuda_fb_resource));
+
+    // FF_CUDA_CK(cudaMemcpyAsync(cuda_mapped_pointer, d_vertices, cuda_mapped_size, cudaMemcpyDeviceToDevice, stream));
+    Color32ToNv12<RGBA32>(static_cast<uint8_t*>(cuda_mapped_pointer), W * 4, out->data[0], out->linesize[0], W, H, out->colorspace);
+
+    FF_CUDA_CK(cudaGraphicsUnmapResources(1, &s->cuda_fb_resource, stream));
+    // std::vector<std::uint8_t> buf(W * H * 3);
+    // glReadPixels(0, 0, W, H, GL_RGB, GL_UNSIGNED_BYTE, buf.data());
+
+    // DEBUG
+    // #define STB_IMAGE_WRITE_IMPLEMENTATION
+    // #define STB_IMAGE_STATIC
+    // #include "pose/stb_image_write.h"
+    // stbi_write_png("one_face_out.png", W, H, 3, buf.data(), W * 3);
 }
 
 static int filter_frame(AVFilterLink *inlink, AVFrame *in) {
@@ -472,7 +507,10 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in) {
     cv::Mat bgr_image(s->model_h, s->model_w, CV_8UC4);
     vector<torch::Tensor> param_vec, roi_box_vec;
     uint8_t* dp_rgbpf32_data[3];
+    // float shift[3] = {104, 117, 123};
+    float shift[3] = {123, 117, 104};
 
+    // float* hp_rgbpf32_data = new float[s->model_w * s->model_h * 3];
     // const AVPixFmtDescriptor *in_desc;
     // const AVPixFmtDescriptor *out_desc;
     // CvtColor* cvt_color_class = s->cvt_color_class;
@@ -489,30 +527,45 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in) {
     }
 
     FF_CU_CK(cuCtxPushCurrent(hw_ctx->cuda_ctx));
-    ret = av_hwframe_get_buffer(s->hw_frames_ctx, out, 0);
-    if (ret < 0)
-        goto fail;
+    
     FF_CUDA_CK(cudaGetLastError());
     dp_rgbpf32_data[0] = static_cast<uint8_t*>(s->d_rgbpf32_img);
     dp_rgbpf32_data[1] = static_cast<uint8_t*>(s->d_rgbpf32_img) + rgbp_pitch * s->model_h;
     dp_rgbpf32_data[2] = static_cast<uint8_t*>(s->d_rgbpf32_img) + rgbp_pitch * s->model_h * 2;
-    nv12_to_rgbpf32(stream, in->data, in->linesize, dp_rgbpf32_data, &rgbp_pitch,
-                    s->model_w, s->model_h, in->colorspace);
+    nv12_to_bgrpf32_shift(stream, in->data, in->linesize, dp_rgbpf32_data, &rgbp_pitch,
+                    s->model_w, s->model_h, 1.0f, shift, in->colorspace);
     FF_CUDA_CK(cudaGetLastError());
 
+    // DEBUG
+    // ck(cudaMemcpy(hp_rgbpf32_data, dp_rgbpf32_data[0], rgbp_pitch * s->model_h * 3, cudaMemcpyDeviceToHost));
+    // std::cout << "rgbpf32: \n";
+    // for (int i = 0; i < 100; i++){
+    //     std::cout << hp_rgbpf32_data[i] << "    ";
+    // }
+    // std::cout << std::endl;
+
     face_dets = s->face_box->forward<float>((float*)s->d_rgbpf32_img, s->model_h, s->model_w);
+    if (face_dets.sizes()[0] == 0) {
+        av_frame_free(&out);
+        return ff_filter_frame(outlink, in);
+    }
+    ret = av_hwframe_get_buffer(s->hw_frames_ctx, out, 0);
+    if (ret < 0)
+        goto fail;
+
     CUcontext current;
     FF_CU_CK(cuCtxGetCurrent(&current));
 
-    Nv12ToColor32<BGRA32>(in->data[0], in->linesize[0], (uint8_t*)s->d_bgra_img, s->model_w * 4, s->model_w, s->model_h, in->colorspace);
+    Nv12ToColor32<RGBA32>(in->data[0], in->linesize[0], (uint8_t*)s->d_bgra_img, s->model_w * 4, s->model_w, s->model_h, in->colorspace);
     FF_CUDA_CK(cudaMemcpyAsync(bgr_image.data, s->d_bgra_img, s->model_h * s->model_w * 4, cudaMemcpyDeviceToHost, stream));
-    cv::cvtColor(bgr_image, bgr_image, cv::COLOR_BGRA2BGR);
-    s->tddfa->forward(bgr_image, face_dets, param_vec, roi_box_vec);
+    cv::cvtColor(bgr_image, bgr_image, cv::COLOR_RGBA2BGR);
+    // cv::imwrite("bgr_from_nv12.jpg", bgr_image);
+    s->tddfa->forward(bgr_image, face_dets, param_vec, roi_box_vec, stream);
     FF_CU_CK(cuCtxGetCurrent(&current));
 
     FF_CUDA_CK(cudaGetLastError());
 
-    draw_on_image(s, s->d_bgra_img, s->tddfa->vertex_data(), s->tddfa->vertex_num(),
+    draw_on_image(s, s->d_bgra_img, s->tddfa->vertex_data(), s->tddfa->vertex_num(), out,
         s->model_w, s->model_h, stream);
     FF_CU_CK(cuCtxPopCurrent(&dummy));
 

@@ -1862,6 +1862,7 @@ HWACCEL_LIBRARY_NONFREE_LIST="
     cuda_sdk
     libnpp
     libtensorrt
+    cudart
 "
 
 HWACCEL_LIBRARY_LIST="
@@ -3735,7 +3736,7 @@ swscale_suggest="libm"
 
 avcodec_extralibs="pthreads_extralibs iconv_extralibs dxva2_extralibs"
 avfilter_extralibs="pthreads_extralibs"
-avutil_extralibs="d3d11va_extralibs nanosleep_extralibs pthreads_extralibs vaapi_drm_extralibs vaapi_x11_extralibs vdpau_x11_extralibs"
+avutil_extralibs="cudart_extralibs d3d11va_extralibs nanosleep_extralibs pthreads_extralibs vaapi_drm_extralibs vaapi_x11_extralibs vdpau_x11_extralibs"
 
 # programs
 ffmpeg_deps="avcodec avfilter avformat"
@@ -6342,7 +6343,8 @@ done
 
 # these are off by default, so fail if requested and not available
 enabled avisynth          && require_headers "avisynth/avisynth_c.h"
-enabled cuda_nvcc         && { check_nvcc cuda_nvcc || die "ERROR: failed checking for nvcc."; }
+enabled cuda_nvcc         && { check_nvcc cuda_nvcc || die "ERROR: failed checking for nvcc."; } && enable cudart
+enabled cudart            && require libcudart cuda_runtime.h cudaSetDevice -lcudart && cudart_extralibs="-lcudart"
 enabled chromaprint       && require chromaprint chromaprint.h chromaprint_get_version -lchromaprint
 enabled decklink          && { require_headers DeckLinkAPI.h &&
                                { test_cpp_condition DeckLinkAPIVersion.h "BLACKMAGIC_DECKLINK_API_VERSION >= 0x0a0a0000" || die "ERROR: Decklink API version must be >= 10.10"; } }
