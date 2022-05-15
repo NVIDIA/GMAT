@@ -292,8 +292,9 @@ static av_cold int init(AVFilterContext *ctx) {
     if ((dir = opendir (s->path_opt)) != NULL) {
         /* print all the files and directories within directory */
         while ((ent = readdir(dir)) != NULL) {
-            printf ("%s\n", ent->d_name);
+            // printf ("%s\n", ent->d_name);
             std::string entry_string{ent->d_name};
+            entry_string = "/" + entry_string;
             if (entry_string.find("FaceBoxesProd") != std::string::npos) {
                 s->facebox_path = s->path_opt + entry_string;
                 continue;
@@ -332,6 +333,7 @@ static int config_props(AVFilterLink *outlink) {
     AVHWFramesContext *out_ctx;
     CUcontext dummy;
     int ret;
+    std::string vert_path{s->path_opt};
 
     int w = inlink->w;
     int h = inlink->h;
@@ -367,7 +369,7 @@ static int config_props(AVFilterLink *outlink) {
     if (!outlink->hw_frames_ctx)
         return AVERROR(ENOMEM);
     FF_CU_CK(cuCtxGetCurrent(&dummy));
-    std::cout << "Current context: " << dummy << ", ffmpeg context: " << hw_ctx->cuda_ctx << std::endl;
+    // std::cout << "Current context: " << dummy << ", ffmpeg context: " << hw_ctx->cuda_ctx << std::endl;
 
     s->face_box = new FaceBoxes_ONNX{s->facebox_path.c_str(), h, w};
     FF_CU_CK(cuCtxGetCurrent(&dummy));
@@ -376,7 +378,9 @@ static int config_props(AVFilterLink *outlink) {
 
     cudaMalloc(&s->d_rgbpf32_img, w * h * 3 * sizeof(float));
     cudaMalloc(&s->d_bgra_img, w * h * 4);
-    config_opengl(s, s->tddfa->vertex_num(), "rio_tri.npy", w, h, hw_ctx->stream);
+
+    vert_path += "/3dmm_verts.npy";
+    config_opengl(s, s->tddfa->vertex_num(), vert_path.c_str(), w, h, hw_ctx->stream);
 
     FF_CU_CK(cuCtxPopCurrent(&dummy));
 
@@ -429,28 +433,28 @@ void draw_on_image(TddfaContext *s, void* d_rgba_image, float* d_vertices, size_
         // cout << glGetString(check_return) << endl;
         // render
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glCheckError();
+        // glCheckError();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glCheckError();
+        // glCheckError();
 
         s->shader_pic->Use();
-        glCheckError();
+        // glCheckError();
         glActiveTexture(GL_TEXTURE0);
-        glCheckError();
+        // glCheckError();
         glBindTexture(GL_TEXTURE_2D, s->tex_image);
-        glCheckError();
+        // glCheckError();
         s->shader_pic->SetUniform("tex0", 0);
         glBindVertexArray(s->VAO_pic);
-        glCheckError();
+        // glCheckError();
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glDrawElements(GL_TRIANGLES, sizeof(indices_pic) / sizeof(indices_pic[0]), GL_UNSIGNED_INT, 0);
-        glCheckError();
+        // glCheckError();
 
         s->shader_face->Use();
         s->shader_face->SetUniform("W", (float)W);
         s->shader_face->SetUniform("H", (float)H);
         s->shader_face->SetUniform("projection", projection);
-        glCheckError();
+        // glCheckError();
 
         s->shader_face->Use();
         glActiveTexture(GL_TEXTURE0);
@@ -523,9 +527,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in) {
     }
 
     FF_CU_CK(cuCtxPushCurrent(hw_ctx->cuda_ctx));
-    ret = av_hwframe_get_buffer(s->hw_frames_ctx, out, 0);
-    if (ret < 0)
-        goto fail;
+    
     FF_CUDA_CK(cudaGetLastError());
     dp_rgbpf32_data[0] = static_cast<uint8_t*>(s->d_rgbpf32_img);
     dp_rgbpf32_data[1] = static_cast<uint8_t*>(s->d_rgbpf32_img) + rgbp_pitch * s->model_h;
@@ -543,6 +545,14 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in) {
     // std::cout << std::endl;
 
     face_dets = s->face_box->forward<float>((float*)s->d_rgbpf32_img, s->model_h, s->model_w);
+    if (face_dets.sizes()[0] == 0) {
+        av_frame_free(&out);
+        return ff_filter_frame(outlink, in);
+    }
+    ret = av_hwframe_get_buffer(s->hw_frames_ctx, out, 0);
+    if (ret < 0)
+        goto fail;
+
     CUcontext current;
     FF_CU_CK(cuCtxGetCurrent(&current));
 

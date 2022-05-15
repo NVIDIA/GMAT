@@ -156,24 +156,24 @@ public:
                 numBoxes = info.GetNumBytes() / sizeof(float) / 4;
             }
         }
-    CUcontext dummy;
-    (cuCtxGetCurrent(&dummy));
-    cudaSetDevice(0);
-    std::cout << "Current context: " << dummy << std::endl;
+    // CUcontext dummy;
+    // (cuCtxGetCurrent(&dummy));
+    // cudaSetDevice(0);
+    // std::cout << "Current context: " << dummy << std::endl;
         auto options =
             torch::TensorOptions()
                 .dtype(torch::kFloat32)
                 .layout(torch::kStrided)
                 .device(torch::kCUDA)
                 .requires_grad(false);
-    (cuCtxGetCurrent(&dummy));
-    std::cout << "Current context: " << dummy << std::endl;
+    // (cuCtxGetCurrent(&dummy));
+    // std::cout << "Current context: " << dummy << std::endl;
         // boxes_tensor = torch.cuda.FloatTensor(numBoxes, 4);
         // conf_tensor = torch.cuda.FloatTensor(numBoxes, 2);
         boxes_tensor = torch::zeros({numBoxes, 4}, options);
         conf_tensor = torch::zeros({numBoxes, 2}, options);
-    (cuCtxGetCurrent(&dummy));
-    std::cout << "Current context: " << dummy << std::endl;
+    // (cuCtxGetCurrent(&dummy));
+    // std::cout << "Current context: " << dummy << std::endl;
 
         // unique_ptr<float[]> anchors;
         // size_t anchor_num = 0;

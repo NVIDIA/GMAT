@@ -191,7 +191,7 @@ class TDDFA_ONNX {
             torch::Tensor roi_box;
             torch::Tensor det_cpu = face_dets[i].to(torch::kCPU);
             parse_roi_box_from_bbox(det_cpu, roi_box);
-            cout << roi_box << endl;
+            // cout << roi_box << endl;
 
             cv::Mat image_120;
             cv::Mat cropped(roi_box[3].item<int>() - roi_box[1].item<int>(),
@@ -299,7 +299,7 @@ class TDDFA_ONNX {
             // cudaStreamSynchronize(stream);
 
             torch::Tensor pts3d_tensor = torch::from_blob(bfm_vdpBuf[bfm_vdpBuf.size() - 1], {3, 38365}, tensor_options_cuda);
-            cout << pts3d_tensor.index({0, Slice(0, 10)}) << endl;
+            // cout << pts3d_tensor.index({0, Slice(0, 10)}) << endl;
             param_vec.push_back(param_tensor);
 
             similar_transform_transpose(d_bfm_out_ptr, &d_vertices_out, num_vertices, roi_box, cub_d_temp_storage, cub_temp_storage_bytes, cub_out, stream);

@@ -52,10 +52,22 @@ But you need to build torchvision manually to use the C++ API. Refer to torchvis
 
 ## Run the filter
 
-We used the [img2pose](https://github.com/vitoralbiero/img2pose) model to estimate human head pose. Download the [img2pose model](https://drive.google.com/file/d/1OvnZ7OUQFg2bAgFADhT7UnCkSaXst10O/view) and unzip the model. The img2pose model can be run directly by onnxruntime, no need to convert. Also, remember to put the rendering assets (medmask/) in the directory where you call `ffmpeg`, e.g. the root folder of ffmpeg.
+We used the [img2pose](https://github.com/vitoralbiero/img2pose) model to estimate human head pose. Download the [img2pose model](https://drive.google.com/file/d/1-w_u17Lq1Aykpjohz9X4xvBI6syaKByY/view?usp=sharing). The img2pose model can be run directly by onnxruntime, no need to convert. Please note that the img2pose onnx model only supports 3x1280x720 inputs. Also, remember to put the rendering assets (medmask/) in the directory where you call `ffmpeg`, e.g. the root folder of ffmpeg.
 
 Command to run the pose filter
 ```bash
-ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i ../output/rio.mp4 –vf scale_npp=1280:720,pose="img2pose.onnx" -c:v h264_nvenc -preset p7 rio_out.mp4
+ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i ../output/rio.mp4 -vf scale_npp=1280:720,pose="img2pose.onnx" -c:v h264_nvenc -preset p7 rio_out.mp4
 ```
 As you can see, pose filter is also a GPU filter and can be used with other GPU filters such as scale_npp.
+
+We also provid a ESRGAN super-resolution onnx model for your reference. You can run the model using the TensorRT filter along with the pose filter. The SR model is located at `ffmpeg-gpu/onnx_models/ESRGAN_x4_dynamic.onnx`. You can convert the onnx model to TRT engine first using polygraphy or trtexec:
+```bash
+polygraphy convert --fp16 --model-type onnx --input-shapes actual_input_1:[1,3,720,1280]  --workspace=8G -o trt_engines/ESRGAN_x4.trt --convert-to trt onnx_models/ESRGAN_x4_dynamic.onnx
+```
+
+and run the pipeline with SR:
+```bash
+ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf scale_npp=1280:720,pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="trt_engines/ESRGAN_x4.trt",format_cuda=nv12 -c:v h264_nvenc <output>
+```
+
+This pipeline can be a good demonstration of the infer-render-enhance video pipeline. Note that ESRGAN is a relatively heavy SR model, the throughput of the pipeline can be low.

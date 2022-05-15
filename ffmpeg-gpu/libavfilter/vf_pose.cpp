@@ -213,7 +213,7 @@ static void load_ort(OrtContext *s, char *model_path, array<int64_t, 3> image_sh
 
     cuda_provider_options.default_memory_arena_cfg = arena_cfg;
     sessionOptions.AppendExecutionProvider_CUDA(cuda_provider_options);
-    sessionOptions.SetGraphOptimizationLevel(ORT_DISABLE_ALL);
+    sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
     assert(api.CreateAndRegisterAllocator(env_ptr, *info_cuda, arena_cfg)==nullptr);
 
     s->ort_session = new Session(env, model_path, sessionOptions);

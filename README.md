@@ -32,7 +32,7 @@ If you just want a specific feature, please refer to the feature's doc for simpl
 
 Our project provides a AI+graphics pipeline in FFmpeg, as shown in the GIF above. Sample command:
 ```bash
-ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf scale_npp=1280:720,pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="./onnx_models/ESRGAN_x4_dynamic.onnx",format_cuda=nv12 -c:v h264_nvenc <output>
+ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf scale_npp=1280:720,pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="./ESRGAN_x4_dynamic.trt",format_cuda=nv12 -c:v h264_nvenc <output>
 ```
 Please refer to the [pose filter doc](doc/Pose_Filter.md) for how to run the pipeline.
 

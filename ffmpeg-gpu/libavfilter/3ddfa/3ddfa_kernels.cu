@@ -228,30 +228,30 @@ void similar_transform_transpose(float* d_vertices, float** d_vertices_out, uint
 
     cub::DeviceReduce::Min(cub_temp_storage, cub_temp_storage_bytes, d_vertices, cub_out, vertices_num, stream);
 
-    float* h_vertices = new float[vertices_num];
-    ck(cudaMemcpy(h_vertices, d_vertices, vertices_num * sizeof(float), cudaMemcpyDeviceToHost));
-    using namespace torch::indexing;
-    auto tensor_options_cuda = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCUDA);
-    torch::Tensor pts3d_tensor = torch::from_blob(d_vertices, {3, 38365}, tensor_options_cuda);
-    std::cout << pts3d_tensor.index({0, Slice(0, 10)}) << std::endl;
-    for (int i = 0; i < 100; i++){
-        std::cout << h_vertices[i] << "  ";
-    }
-    std::cout << roi_box << std::endl;
-    std::cout << "scale_x, scale_y: " << scale_x << ", " << scale_y << std::endl;
+    // float* h_vertices = new float[vertices_num];
+    // ck(cudaMemcpy(h_vertices, d_vertices, vertices_num * sizeof(float), cudaMemcpyDeviceToHost));
+    // using namespace torch::indexing;
+    // auto tensor_options_cuda = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCUDA);
+    // torch::Tensor pts3d_tensor = torch::from_blob(d_vertices, {3, 38365}, tensor_options_cuda);
+    // std::cout << pts3d_tensor.index({0, Slice(0, 10)}) << std::endl;
+    // for (int i = 0; i < 100; i++){
+    //     std::cout << h_vertices[i] << "  ";
+    // }
+    // std::cout << roi_box << std::endl;
+    // std::cout << "scale_x, scale_y: " << scale_x << ", " << scale_y << std::endl;
     similar_transform_kernel_transpose<<<grid_dim, block_dim, 0, stream>>>(d_vertices, d_out, vertices_num/3,
         scale_x, scale_y, roi_box[0].item<float>(), roi_box[1].item<float>(), cub_out);
     ck(cudaGetLastError());
     // DEBUG
-    ck(cudaDeviceSynchronize());
+    // ck(cudaDeviceSynchronize());
     // float* h_vertices = new float[vertices_num];
     // cudaMalloc(&h_vertices, vertices_num * sizeof(float));
-    ck(cudaMemcpy(h_vertices, *d_vertices_out, vertices_num * sizeof(float), cudaMemcpyDeviceToHost));
-    std::cout << "Vertices: \n";
-    for (int i = 0; i < 100; i++){
-        std::cout << h_vertices[i] << "  ";
-    }
-    std::cout << std::endl;
+    // ck(cudaMemcpy(h_vertices, *d_vertices_out, vertices_num * sizeof(float), cudaMemcpyDeviceToHost));
+    // std::cout << "Vertices: \n";
+    // for (int i = 0; i < 100; i++){
+    //     std::cout << h_vertices[i] << "  ";
+    // }
+    // std::cout << std::endl;
 }
 
 template<typename T>
