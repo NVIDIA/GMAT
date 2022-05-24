@@ -96,10 +96,13 @@ struct OrtContext{
             delete ort_session;
         if (ort_in_dev)
             cudaFree(ort_in_dev);
+	if (ort_env)
+            delete ort_env;
     }
 
     Session *ort_session;
     MemoryInfo *mem_info;
+    Env *ort_env;
     VectorXf pose_mean;
     VectorXf pose_stddev;
     vector<const char*> input_names;
@@ -202,9 +205,13 @@ static void load_ort(OrtContext *s, char *model_path, array<int64_t, 3> image_sh
     MemoryInfo *info_cuda = new MemoryInfo("Cuda", OrtAllocatorType::OrtArenaAllocator, 0, OrtMemTypeDefault);
     s->mem_info = info_cuda;
 
-    Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,
-                 instanceName.c_str());
-    OrtEnv* env_ptr = (OrtEnv*)(env);
+    // Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,
+    //             instanceName.c_str());
+    // OrtEnv* env_ptr = (OrtEnv*)(env);
+    Env* env = new Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, instanceName.c_str());
+    OrtEnv* env_ptr = (OrtEnv*)(*env);
+    s->ort_env = env;
+
     OrtCUDAProviderOptions cuda_provider_options{};
     cuda_provider_options.cudnn_conv_algo_search = (enum OrtCudnnConvAlgoSearch)0;
     cuda_provider_options.gpu_mem_limit = 16 * 1024 * 1024 * 1024ul; // 16 GB
@@ -216,7 +223,7 @@ static void load_ort(OrtContext *s, char *model_path, array<int64_t, 3> image_sh
     sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
     assert(api.CreateAndRegisterAllocator(env_ptr, *info_cuda, arena_cfg)==nullptr);
 
-    s->ort_session = new Session(env, model_path, sessionOptions);
+    s->ort_session = new Session(*env, model_path, sessionOptions);
     Ort::Allocator cuda_allocator(*s->ort_session, *info_cuda);
     auto allocator_info = cuda_allocator.GetInfo();
     assert(*info_cuda == allocator_info);
