@@ -41,7 +41,8 @@
 #include <torchvision/ops/nms.h>
 #include <Eigen/Dense>
 #include "pose/cnpy.h"
-#include "pose_kernel.h"
+// #include "pose_kernel.h"
+#include "format_cuda.h"
 #include "pose_proc.h"
 #include "pose_shaders.h"
 
@@ -96,10 +97,13 @@ struct OrtContext{
             delete ort_session;
         if (ort_in_dev)
             cudaFree(ort_in_dev);
+	if (ort_env)
+            delete ort_env;
     }
 
     Session *ort_session;
     MemoryInfo *mem_info;
+    Env *ort_env;
     VectorXf pose_mean;
     VectorXf pose_stddev;
     vector<const char*> input_names;
@@ -202,21 +206,25 @@ static void load_ort(OrtContext *s, char *model_path, array<int64_t, 3> image_sh
     MemoryInfo *info_cuda = new MemoryInfo("Cuda", OrtAllocatorType::OrtArenaAllocator, 0, OrtMemTypeDefault);
     s->mem_info = info_cuda;
 
-    Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,
-                 instanceName.c_str());
-    OrtEnv* env_ptr = (OrtEnv*)(env);
-    OrtCUDAProviderOptions cuda_provider_options{0};
-    cuda_provider_options.cudnn_conv_algo_search = EXHAUSTIVE;
+    // Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,
+    //             instanceName.c_str());
+    // OrtEnv* env_ptr = (OrtEnv*)(env);
+    Env* env = new Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, instanceName.c_str());
+    OrtEnv* env_ptr = (OrtEnv*)(*env);
+    s->ort_env = env;
+
+    OrtCUDAProviderOptions cuda_provider_options{};
+    cuda_provider_options.cudnn_conv_algo_search = (enum OrtCudnnConvAlgoSearch)0;
     cuda_provider_options.gpu_mem_limit = 16 * 1024 * 1024 * 1024ul; // 16 GB
     // ffmpeg only uses default stream
     cuda_provider_options.do_copy_in_default_stream = 1;
 
     cuda_provider_options.default_memory_arena_cfg = arena_cfg;
     sessionOptions.AppendExecutionProvider_CUDA(cuda_provider_options);
-    sessionOptions.SetGraphOptimizationLevel(ORT_DISABLE_ALL);
+    sessionOptions.SetGraphOptimizationLevel(ORT_ENABLE_ALL);
     assert(api.CreateAndRegisterAllocator(env_ptr, *info_cuda, arena_cfg)==nullptr);
 
-    s->ort_session = new Session(env, model_path, sessionOptions);
+    s->ort_session = new Session(*env, model_path, sessionOptions);
     Ort::Allocator cuda_allocator(*s->ort_session, *info_cuda);
     auto allocator_info = cuda_allocator.GetInfo();
     assert(*info_cuda == allocator_info);
@@ -266,7 +274,7 @@ static const AVOption pose_options[] = {
 
 AVFILTER_DEFINE_CLASS(pose);
 
-void print(const glm::mat4 &m, std::string name) {
+static void print(const glm::mat4 &m, std::string name) {
     std::cout << name << "=np.asarray([";
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
@@ -277,18 +285,18 @@ void print(const glm::mat4 &m, std::string name) {
     std::cout << "]).reshape(4, 4)" << std::endl;
 }
 
-void ck_egl(EGLBoolean ret) {
-    if (ret) return;
-    cout << "EGL error" << endl;
-	EGLint error = eglGetError();
-	if (error != EGL_SUCCESS) {
-		stringstream s;
-		s << "EGL error 0x" << std::hex << error;
-		throw runtime_error(s.str());
-	}
-}
+// static void ck_egl(EGLBoolean ret) {
+//     if (ret) return;
+//     cout << "EGL error" << endl;
+// 	EGLint error = eglGetError();
+// 	if (error != EGL_SUCCESS) {
+// 		stringstream s;
+// 		s << "EGL error 0x" << std::hex << error;
+// 		throw runtime_error(s.str());
+// 	}
+// }
 
-void assertEGLError(const std::string& msg) {
+static void assertEGLError(const std::string& msg) {
 	EGLint error = eglGetError();
 
 	if (error != EGL_SUCCESS) {
@@ -711,7 +719,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
     dp_rgbpf32[1] = static_cast<uint8_t*>(ort_ctx->ort_in_dev) + linesize * inlink->h;
     dp_rgbpf32[2] = static_cast<uint8_t*>(ort_ctx->ort_in_dev) + linesize * inlink->h * 2;
     nv12_to_rgbpf32(hw_ctx->stream, in->data, in->linesize, dp_rgbpf32,
-                    linesize, in->width, in->height, in->colorspace);
+                    &linesize, in->width, in->height, in->colorspace);
     // Sync before launch ort inference, as ort session runs on a different stream
     ck(cudaStreamSynchronize(hw_ctx->stream));
 

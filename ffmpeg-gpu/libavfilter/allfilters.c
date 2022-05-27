@@ -420,6 +420,7 @@ extern AVFilter ff_vf_super2xsai;
 extern AVFilter ff_vf_swaprect;
 extern AVFilter ff_vf_swapuv;
 extern AVFilter ff_vf_tblend;
+extern AVFilter ff_vf_tddfa;
 extern AVFilter ff_vf_telecine;
 extern AVFilter ff_vf_tensorrt;
 extern AVFilter ff_vf_thistogram;

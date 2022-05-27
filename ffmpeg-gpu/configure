@@ -227,6 +227,7 @@ External library support:
   --enable-libcelt         enable CELT decoding via libcelt [no]
   --enable-libcdio         enable audio CD grabbing with libcdio [no]
   --enable-libcodec2       enable codec2 en/decoding using libcodec2 [no]
+  --enable-libcv_cuda      enable cv-cuda library [no]
   --enable-libdav1d        enable AV1 decoding via libdav1d [no]
   --enable-libdavs2        enable AVS2 decoding via libdavs2 [no]
   --enable-libdc1394       enable IIDC-1394 grabbing using libdc1394
@@ -247,6 +248,7 @@ External library support:
   --enable-liblensfun      enable lensfun lens correction [no]
   --enable-libmodplug      enable ModPlug via libmodplug [no]
   --enable-libmp3lame      enable MP3 encoding via libmp3lame [no]
+  --enable-libonnxruntime  enable ONNXRUNTIME [no]
   --enable-libopencore-amrnb enable AMR-NB de/encoding via libopencore-amrnb [no]
   --enable-libopencore-amrwb enable AMR-WB decoding via libopencore-amrwb [no]
   --enable-libopencv       enable video filtering via libopencv [no]
@@ -278,6 +280,7 @@ External library support:
   --enable-libtheora       enable Theora encoding via libtheora [no]
   --enable-libtls          enable LibreSSL (via libtls), needed for https support
                            if openssl, gnutls or mbedtls is not used [no]
+  --enable-libtorch        enable libtorch C++ frontend
   --enable-libtwolame      enable MP2 encoding via libtwolame [no]
   --enable-libuavs3d       enable AVS3 decoding via libuavs3d [no]
   --enable-libv4l2         enable libv4l2/v4l-utils [no]
@@ -1772,6 +1775,7 @@ EXTERNAL_LIBRARY_LIST="
     libcaca
     libcelt
     libcodec2
+    libcv_cuda
     libdav1d
     libdc1394
     libdrm
@@ -1790,6 +1794,7 @@ EXTERNAL_LIBRARY_LIST="
     libmodplug
     libmp3lame
     libmysofa
+    libonnxruntime
     libopencv
     libopenh264
     libopenjpeg
@@ -1813,6 +1818,7 @@ EXTERNAL_LIBRARY_LIST="
     libtensorflow
     libtesseract
     libtheora
+    libtorch
     libtwolame
     libuavs3d
     libv4l2
@@ -1862,6 +1868,7 @@ HWACCEL_LIBRARY_NONFREE_LIST="
     cuda_sdk
     libnpp
     libtensorrt
+    cudart
 "
 
 HWACCEL_LIBRARY_LIST="
@@ -3064,12 +3071,14 @@ overlay_cuda_filter_deps="ffnvcodec"
 overlay_cuda_filter_deps_any="cuda_nvcc cuda_llvm"
 tensorrt_filter_deps="libnpp libtensorrt"
 nv122rgbp_filter_deps="libnpp"
-pose_filter_deps="cuda_nvcc opengl"
-pose_filter_extralibs="-Wl,--no-as-needed -ltorch -ltorch_cuda -ltorch_cpu -lc10 -lc10_cuda -ltorchvision
--lnvrtc -lnvToolsExt -lcudart -lcuda -lonnxruntime -lstdc++ -lEGL -lGL -lX11 -lpthread -lXrandr -lXi -lassimp"
-format_cuda_filter_extralibs="-lcudart -lcuda -lstdc++"
-cvtColor_cuda_filter_deps="cuda_nvcc"
-cvtColor_cuda_filter_extralibs="-lcv_cuda"
+pose_filter_deps="cuda_nvcc opengl libonnxruntime cudart libtorch"
+pose_filter_extralibs="-Wl,--no-as-needed -lstdc++ -lEGL -lX11 -lpthread -lXrandr -lXi -lassimp"
+format_cuda_filter_deps="cuda_nvcc cudart"
+format_cuda_filter_extralibs="-lstdc++"
+tddfa_filter_deps="cuda_nvcc libtensorrt cudart libtorch"
+tddfa_filter_extralibs="-lEGL"
+cvtColor_cuda_filter_deps="cuda_nvcc libcv_cuda"
+# cvtColor_cuda_filter_extralibs="-lcv_cuda"
 # tensorrt_filter_deps_any="cuda_nvcc cuda_llvm"
 
 amf_deps_any="libdl LoadLibrary"
@@ -3735,7 +3744,7 @@ swscale_suggest="libm"
 
 avcodec_extralibs="pthreads_extralibs iconv_extralibs dxva2_extralibs"
 avfilter_extralibs="pthreads_extralibs"
-avutil_extralibs="d3d11va_extralibs nanosleep_extralibs pthreads_extralibs vaapi_drm_extralibs vaapi_x11_extralibs vdpau_x11_extralibs"
+avutil_extralibs="cudart_extralibs d3d11va_extralibs nanosleep_extralibs pthreads_extralibs vaapi_drm_extralibs vaapi_x11_extralibs vdpau_x11_extralibs"
 
 # programs
 ffmpeg_deps="avcodec avfilter avformat"
@@ -6342,7 +6351,8 @@ done
 
 # these are off by default, so fail if requested and not available
 enabled avisynth          && require_headers "avisynth/avisynth_c.h"
-enabled cuda_nvcc         && { check_nvcc cuda_nvcc || die "ERROR: failed checking for nvcc."; }
+enabled cuda_nvcc         && { check_nvcc cuda_nvcc || die "ERROR: failed checking for nvcc."; } && enable cudart
+enabled cudart            && require libcudart cuda_runtime.h cudaSetDevice -lcudart -lcuda && cudart_extralibs="-lcudart -lcuda"
 enabled chromaprint       && require chromaprint chromaprint.h chromaprint_get_version -lchromaprint
 enabled decklink          && { require_headers DeckLinkAPI.h &&
                                { test_cpp_condition DeckLinkAPIVersion.h "BLACKMAGIC_DECKLINK_API_VERSION >= 0x0a0a0000" || die "ERROR: Decklink API version must be >= 10.10"; } }
@@ -6365,6 +6375,7 @@ enabled libcelt           && require libcelt celt/celt.h celt_decode -lcelt0 &&
                                die "ERROR: libcelt must be installed and version must be >= 0.11.0."; }
 enabled libcaca           && require_pkg_config libcaca caca caca.h caca_create_canvas
 enabled libcodec2         && require libcodec2 codec2/codec2.h codec2_create -lcodec2
+enabled libcv_cuda        && require_cpp libcv_cuda cv_cuda.h cuda_op::CudaBaseOp -lcv_cuda -lstdc++
 enabled libdav1d          && require_pkg_config libdav1d "dav1d >= 0.5.0" "dav1d/dav1d.h" dav1d_version
 enabled libdavs2          && require_pkg_config libdavs2 "davs2 >= 1.6.0" davs2.h davs2_decoder_open
 enabled libdc1394         && require_pkg_config libdc1394 libdc1394-2 dc1394/dc1394.h dc1394_new
@@ -6407,6 +6418,7 @@ enabled libmysofa         && { check_pkg_config libmysofa libmysofa mysofa.h mys
 enabled libnpp            && { check_lib libnpp npp.h nppGetLibVersion -lnppig -lnppicc -lnppc -lnppidei ||
                                check_lib libnpp npp.h nppGetLibVersion -lnppi -lnppc -lnppidei ||
                                die "ERROR: libnpp not found"; }
+enabled libonnxruntime    && require libonnxruntime onnxruntime/onnxruntime_c_api.h OrtGetApiBase -lonnxruntime
 enabled libopencore_amrnb && require libopencore_amrnb opencore-amrnb/interf_dec.h Decoder_Interface_init -lopencore-amrnb
 enabled libopencore_amrwb && require libopencore_amrwb opencore-amrwb/dec_if.h D_IF_init -lopencore-amrwb
 enabled libopencv         && { check_headers opencv2/core/core_c.h &&
@@ -6447,6 +6459,7 @@ enabled libtensorrt       && require_cpp libtensorrt NvInfer.h nvinfer1::Dims2 -
 enabled libtesseract      && require_pkg_config libtesseract tesseract tesseract/capi.h TessBaseAPICreate
 enabled libtheora         && require libtheora theora/theoraenc.h th_info_init -ltheoraenc -ltheoradec -logg
 enabled libtls            && require_pkg_config libtls libtls tls.h tls_configure
+enabled libtorch          && require_cpp libtorch torch/torch.h torch::Tensor -ltorch -ltorch_cuda -ltorch_cpu -lc10 -lc10_cuda -ltorchvision -lnvrtc -lnvToolsExt -lstdc++
 enabled libtwolame        && require libtwolame twolame.h twolame_init -ltwolame &&
                              { check_lib libtwolame twolame.h twolame_encode_buffer_float32_interleaved -ltwolame ||
                                die "ERROR: libtwolame must be installed and version must be >= 0.3.10"; }

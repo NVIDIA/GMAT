@@ -1,57 +1,49 @@
 FFmpeg GPU Demo
 ==========================
-This demo shows a ffmpeg-based full-GPU rendering and inference pipeline. The code is based on ffmpeg release 4.4.
+This demo shows a ffmpeg-based full-GPU rendering and inference pipeline. The code is based on ffmpeg release 4.4. The project is composed of several new filters in FFmpeg, clips rendered in real-time by these filters is demonstrated below.
 
-## Build
-Requirements:
-* libtorch >= 1.9.1
-* torchvision >= 0.11.1
-* TensoRT >= 8.0.1
-* onnxruntime-gpu 1.8.1
-* Eigen 3.4.0
-* CUDA >= 11.0
+<p align="center">
+  <img src="doc/images/rio_360_mask_10s.gif" alt="rio" width="512px">
+  <img src="doc/images/demo_out.gif" alt="demo" width="512px">
+</p>
 
-Download libtorch with cxx11 ABI
+### [Updates]
+* 2022/05 3DDFA filter is added.
 
+## Features
+* [Pose filter](doc/Pose_Filter.md) Putting a mask on everyone's face
+* [TensorRT filter](doc/Tensorrt_Filter.md)
+* [3DDFA filter](doc/3DDFA_filter.md) Recontruct 3D face using [3DDFA_v2](https://github.com/cleardusk/3DDFA_V2)
+
+We are still actively developing this project, and we will continuously update this list. Please refer to the documents for details of each feature, including how to build and run them.
+
+It should be noted that __the purpose of this project is demonstration__. As the name *FFmpeg GPU __Demo__* indicates, we would like to show you how to build such a pipeline, rather than building a product or turn-key solution.
+
+## Getting started
+The project has complex dependencies, we offer a Dockerfile to quickly deploy the environment. We assumed that you have installed the [NVIDIA GPU driver](https://www.nvidia.com/download/index.aspx) and [nvidia-docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
+You can enable all the features following the commands below:
 ```bash
-wget https://download.pytorch.org/libtorch/cu113/libtorch-cxx11-abi-shared-with-deps-1.10.2%2Bcu113.zip
-unzip libtorch-cxx11-abi-shared-with-deps-1.10.2+cu113.zip
-```
-
-Compile torchvision with C++ API
-
-```bash
-git clone https://github.com/pytorch/vision.git
-cd torchvision && mkdir build
-cmake -DWITH_CUDA=on ..
-make
+git clone --recursive https://github.com/NVIDIA/FFmpeg-GPU-Demo.git
+docker pull nvcr.io/nvidia/pytorch:22.03-py3
+cd ffmpeg-gpu-demo
+docker build -t ffmpeg-gpu-demo:22.03-py3 --build-arg TAG=22.03-py3 .
+docker run --gpus all -it --rm -e NVIDIA_DRIVER_CAPABILITIES=all -v $(pwd):/workspace/ffmpeg-gpu-demo ffmpeg-gpu-demo:22.03-py3
+cd ffmpeg-gpu-demo/ffmpeg-gpu/
+bash config_ffmpeg_libtorch.sh
+make -j10
 make install
 ```
-Go to the ffmpeg-gpu folder
+If you just want a specific feature, please refer to the feature's doc for simplified building. We will provide a complete docker image in the future, so that you can pull & run directly.
 
+Our project provides a AI+graphics pipeline in FFmpeg, as shown in the GIF above. Sample command:
 ```bash
-cd ffmpeg-gpu
+ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf scale_npp=1280:720,pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="./ESRGAN_x4_dynamic.trt",format_cuda=nv12 -c:v h264_nvenc <output>
 ```
+Please refer to the [pose filter doc](doc/Pose_Filter.md) for how to run the pipeline.
 
-Remeber to change the *PATH variables in `config_ffmpeg_libtorch.sh` according to your installation, then configure ffmpeg
+## Additional Resources
+If you are interested in the tech details of our project, check out our GTC 2022 talk: [AI-based Cloud Rendering: Full-GPU Pipeline in FFmpeg](https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41609/)
 
-```bash
-bash config_ffmpeg_libtorch.sh && make
-```
+FFmpeg GPU Demo is first developed by NVIDIA DevTech & SA team, and currently maintained by Xiaowei Wang. Authors include Yiming Liu, Jinzhong(Thor) Wu and Xiaowei Wang.
 
-You can modify the `config_ffmpeg_libtorch.sh` file to add additional configure options, e.g. --enable-libx264.
-If your libtorch/torchvision binary is built with pre-cxx11 ABI (e.g. installed using pip), add --extra-cxxflags="-D_GLIBCXX_USE_CXX11_ABI=0" to the configure options.
-
-## Run the pipeline
-The code provides an ESRGAN super-resolution model (ESRGAN_x4_dynamic.onnx) just for reference. Before running the pipeline, please convert the ONNX model to a TRT engine using `trtexec`. Download the [img2pose model](https://drive.google.com/file/d/1OvnZ7OUQFg2bAgFADhT7UnCkSaXst10O/view) and unzip the model. The img2pose model can be run directly by onnxruntime, no need to convert.
-
-If you want to run the rendering filter, remember to put the rendering assets (medmask/) in the directory where you call `ffmpeg`, e.g. the root folder of ffmpeg.
-
-Use the following command to run the pipeline:
-
-```bash
-ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i <input> -vf pose="./img2pose_v1_ft_300w_lp_static_nopost.onnx":8,format_cuda=rgbpf32,tensorrt="./ESRGAN_x4.trt",format_cuda=nv12,scale_npp=1920:1080 -c:v h264_nvenc <output>
-```
-
-This is the first version of the pipeline, we expect bugs and errors, feel free to communicate with us if you have any problems.
-
+FFmpeg GPU Demo is under MIT license, check out the [LICENSE](LICENSE.md) for details.
