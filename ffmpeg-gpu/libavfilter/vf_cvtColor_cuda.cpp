@@ -598,7 +598,20 @@ fail:
 }
 static av_cold void uninit(AVFilterContext *ctx)
 {
+    CvtColorCudaContext *s = reinterpret_cast<CvtColorCudaContext*>(ctx->priv);
+    if (s->workspace){
+        cudaFree(s->workspace);
+    }
+    if (s->cv_input_buffer){
+        cudaFree(s->cv_input_buffer);
+    }
+    if (s->cv_output_buffer){
+        cudaFree(s->cv_output_buffer);
+    }
 
+    if (s->cvt_color_class){
+        delete s->cvt_color_class;
+    }
 }
 
 static const AVFilterPad cvtColor_cuda_inputs[] = {
