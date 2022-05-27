@@ -341,6 +341,14 @@ void Nv12ToColor64(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPi
 }
 
 template <class COLOR32>
+void Nv12ToColor32(uint8_t **dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
+    SetMatYuv2Rgb(iMatrix);
+    YuvToRgbKernel<uchar2, COLOR32, uint2>
+        <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
+        (dpNv12[0], nNv12Pitch, dpBgra, nBgraPitch, nWidth, nHeight);
+}
+
+template <class COLOR32>
 void YUV444ToColor32(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
     SetMatYuv2Rgb(iMatrix);
     Yuv444ToRgbKernel<uchar2, COLOR32, uint2>
@@ -423,6 +431,7 @@ void YUV444P16ToColorPlanar(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgrp, int 
 // Explicit Instantiation
 template void Nv12ToColor32<BGRA32>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
 template void Nv12ToColor32<RGBA32>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void Nv12ToColor32<RGBA32>(uint8_t **dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
 template void Nv12ToColor64<BGRA64>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
 template void Nv12ToColor64<RGBA64>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
 template void YUV444ToColor32<BGRA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
@@ -556,6 +565,16 @@ void Bgra64ToP016(uint8_t *dpBgra, int nBgraPitch, uint8_t *dpP016, int nP016Pit
         <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
         (dpBgra, nBgraPitch, dpP016, nP016Pitch, nWidth, nHeight);
 }
+
+template<class COLOR32>
+void Color32ToNv12(uint8_t *dpBgra, int nBgraPitch, uint8_t *dpNv12, int nNv12Pitch, int nWidth, int nHeight, int iMatrix){
+    SetMatRgb2Yuv(iMatrix);
+    RgbToYuvKernel<uchar2, COLOR32, uint2>
+            <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
+            (dpBgra, nBgraPitch, dpNv12, nNv12Pitch, nWidth, nHeight);
+}
+
+template void Color32ToNv12<RGBA32>(uint8_t *dpBgra, int nBgraPitch, uint8_t *dpNv12, int nNv12Pitch, int nWidth, int nHeight, int iMatrix);
 
 #ifdef __cplusplus
 extern "C"

@@ -247,6 +247,7 @@ External library support:
   --enable-liblensfun      enable lensfun lens correction [no]
   --enable-libmodplug      enable ModPlug via libmodplug [no]
   --enable-libmp3lame      enable MP3 encoding via libmp3lame [no]
+  --enable-libonnxruntime  enable ONNXRUNTIME [no]
   --enable-libopencore-amrnb enable AMR-NB de/encoding via libopencore-amrnb [no]
   --enable-libopencore-amrwb enable AMR-WB decoding via libopencore-amrwb [no]
   --enable-libopencv       enable video filtering via libopencv [no]
@@ -278,6 +279,7 @@ External library support:
   --enable-libtheora       enable Theora encoding via libtheora [no]
   --enable-libtls          enable LibreSSL (via libtls), needed for https support
                            if openssl, gnutls or mbedtls is not used [no]
+  --enable-libtorch        enable libtorch C++ frontend
   --enable-libtwolame      enable MP2 encoding via libtwolame [no]
   --enable-libuavs3d       enable AVS3 decoding via libuavs3d [no]
   --enable-libv4l2         enable libv4l2/v4l-utils [no]
@@ -1790,6 +1792,7 @@ EXTERNAL_LIBRARY_LIST="
     libmodplug
     libmp3lame
     libmysofa
+    libonnxruntime
     libopencv
     libopenh264
     libopenjpeg
@@ -1813,6 +1816,7 @@ EXTERNAL_LIBRARY_LIST="
     libtensorflow
     libtesseract
     libtheora
+    libtorch
     libtwolame
     libuavs3d
     libv4l2
@@ -3065,12 +3069,12 @@ overlay_cuda_filter_deps="ffnvcodec"
 overlay_cuda_filter_deps_any="cuda_nvcc cuda_llvm"
 tensorrt_filter_deps="libnpp libtensorrt"
 nv122rgbp_filter_deps="libnpp"
-pose_filter_deps="cuda_nvcc opengl"
-pose_filter_extralibs="-Wl,--no-as-needed -ltorch -ltorch_cuda -ltorch_cpu -lc10 -lc10_cuda -ltorchvision
--lnvrtc -lnvToolsExt -lcudart -lcuda -lonnxruntime -lstdc++ -lEGL -lGL -lX11 -lpthread -lXrandr -lXi -lassimp"
-format_cuda_filter_extralibs="-lcudart -lcuda -lstdc++"
-tddfa_filter_deps="cuda_nvcc libtensorrt"
-tddfa_filter_extralibs="-ltorchvision"
+pose_filter_deps="cuda_nvcc opengl libonnxruntime cudart libtorch"
+pose_filter_extralibs="-Wl,--no-as-needed -lstdc++ -lEGL -lX11 -lpthread -lXrandr -lXi -lassimp"
+format_cuda_filter_deps="cuda_nvcc cudart"
+format_cuda_filter_extralibs="-lstdc++"
+tddfa_filter_deps="cuda_nvcc libtensorrt cudart libtorch"
+tddfa_filter_extralibs="-lEGL"
 # tensorrt_filter_deps_any="cuda_nvcc cuda_llvm"
 
 amf_deps_any="libdl LoadLibrary"
@@ -6344,7 +6348,7 @@ done
 # these are off by default, so fail if requested and not available
 enabled avisynth          && require_headers "avisynth/avisynth_c.h"
 enabled cuda_nvcc         && { check_nvcc cuda_nvcc || die "ERROR: failed checking for nvcc."; } && enable cudart
-enabled cudart            && require libcudart cuda_runtime.h cudaSetDevice -lcudart && cudart_extralibs="-lcudart"
+enabled cudart            && require libcudart cuda_runtime.h cudaSetDevice -lcudart -lcuda && cudart_extralibs="-lcudart -lcuda"
 enabled chromaprint       && require chromaprint chromaprint.h chromaprint_get_version -lchromaprint
 enabled decklink          && { require_headers DeckLinkAPI.h &&
                                { test_cpp_condition DeckLinkAPIVersion.h "BLACKMAGIC_DECKLINK_API_VERSION >= 0x0a0a0000" || die "ERROR: Decklink API version must be >= 10.10"; } }
@@ -6409,6 +6413,7 @@ enabled libmysofa         && { check_pkg_config libmysofa libmysofa mysofa.h mys
 enabled libnpp            && { check_lib libnpp npp.h nppGetLibVersion -lnppig -lnppicc -lnppc -lnppidei ||
                                check_lib libnpp npp.h nppGetLibVersion -lnppi -lnppc -lnppidei ||
                                die "ERROR: libnpp not found"; }
+enabled libonnxruntime    && require libonnxruntime onnxruntime/onnxruntime_c_api.h OrtGetApiBase -lonnxruntime
 enabled libopencore_amrnb && require libopencore_amrnb opencore-amrnb/interf_dec.h Decoder_Interface_init -lopencore-amrnb
 enabled libopencore_amrwb && require libopencore_amrwb opencore-amrwb/dec_if.h D_IF_init -lopencore-amrwb
 enabled libopencv         && { check_headers opencv2/core/core_c.h &&
@@ -6449,6 +6454,7 @@ enabled libtensorrt       && require_cpp libtensorrt NvInfer.h nvinfer1::Dims2 -
 enabled libtesseract      && require_pkg_config libtesseract tesseract tesseract/capi.h TessBaseAPICreate
 enabled libtheora         && require libtheora theora/theoraenc.h th_info_init -ltheoraenc -ltheoradec -logg
 enabled libtls            && require_pkg_config libtls libtls tls.h tls_configure
+enabled libtorch          && require_cpp libtorch torch/torch.h torch::Tensor -ltorch -ltorch_cuda -ltorch_cpu -lc10 -lc10_cuda -ltorchvision -lnvrtc -lnvToolsExt -lstdc++
 enabled libtwolame        && require libtwolame twolame.h twolame_init -ltwolame &&
                              { check_lib libtwolame twolame.h twolame_encode_buffer_float32_interleaved -ltwolame ||
                                die "ERROR: libtwolame must be installed and version must be >= 0.3.10"; }

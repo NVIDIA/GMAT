@@ -4,7 +4,7 @@ TORCH_INCPATH="-I$TORCH_ROOT/include/torch/csrc/api/include -I$TORCH_ROOT/includ
 TORCH_LIBPATH=$TORCH_ROOT/lib
 
 ./configure --enable-nonfree --enable-cuda-nvcc --enable-libnpp --extra-cflags=-I/usr/local/cuda/include \
---extra-ldflags=-L/usr/local/cuda/lib64 --disable-static --enable-shared --enable-opengl \
+--extra-ldflags=-L/usr/local/cuda/lib64 --disable-static --enable-shared --enable-opengl --enable-libtorch --enable-libonnxruntime \
 --enable-libtensorrt --enable-libopencv \
 --extra-ldflags=-L$TORCH_LIBPATH \
 --extra-cflags="$TORCH_INCPATH" \

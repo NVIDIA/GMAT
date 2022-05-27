@@ -41,7 +41,8 @@
 #include <torchvision/ops/nms.h>
 #include <Eigen/Dense>
 #include "pose/cnpy.h"
-#include "pose_kernel.h"
+// #include "pose_kernel.h"
+#include "format_cuda.h"
 #include "pose_proc.h"
 #include "pose_shaders.h"
 
@@ -718,7 +719,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
     dp_rgbpf32[1] = static_cast<uint8_t*>(ort_ctx->ort_in_dev) + linesize * inlink->h;
     dp_rgbpf32[2] = static_cast<uint8_t*>(ort_ctx->ort_in_dev) + linesize * inlink->h * 2;
     nv12_to_rgbpf32(hw_ctx->stream, in->data, in->linesize, dp_rgbpf32,
-                    linesize, in->width, in->height, in->colorspace);
+                    &linesize, in->width, in->height, in->colorspace);
     // Sync before launch ort inference, as ort session runs on a different stream
     ck(cudaStreamSynchronize(hw_ctx->stream));
 
