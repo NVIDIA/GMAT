@@ -29,7 +29,7 @@ NV_ENCODE_API_FUNCTION_LIST NvEncLiteUnbuffered::LoadNvEncApi() {
 }
 
 NvEncLiteUnbuffered::NvEncLiteUnbuffered(NV_ENC_DEVICE_TYPE eDeviceType, void *pDevice, int nWidth, int nHeight, NV_ENC_BUFFER_FORMAT eBufferFormat, 
-    NvEncoderInitParam *pInitParam, int nExtraOutputDelay) :
+    NvEncoderInitParam *pInitParam, int nExtraOutputDelay, bool stillImage) :
     pDevice(pDevice), eDeviceType(eDeviceType), nWidth(nWidth), nHeight(nHeight), eBufferFormat(eBufferFormat) 
 {
     if (!nvenc.nvEncOpenEncodeSession) {
@@ -71,8 +71,8 @@ NvEncLiteUnbuffered::NvEncLiteUnbuffered(NV_ENC_DEVICE_TYPE eDeviceType, void *p
     NV_ENC_PRESET_CONFIG presetConfig = { NV_ENC_PRESET_CONFIG_VER, { NV_ENC_CONFIG_VER } };
     ck(nvenc.nvEncGetEncodePresetConfigEx(hEncoder, initializeParams.encodeGUID, initializeParams.presetGUID, tuningInfo, &presetConfig));
     encodeConfig = presetConfig.presetCfg;
-    encodeConfig.frameIntervalP = 1;
-    encodeConfig.gopLength = 300;
+    encodeConfig.frameIntervalP = stillImage ? 0 : 1;
+    encodeConfig.gopLength = stillImage ? 1 : 300;
     encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CONSTQP;
     encodeConfig.rcParams.constQP = {28, 31, 25};
 
@@ -109,6 +109,9 @@ NvEncLiteUnbuffered::NvEncLiteUnbuffered(NV_ENC_DEVICE_TYPE eDeviceType, void *p
         // QP delta map and AQ (either spatial or temporal) are mutually exclusive
         encodeConfig.rcParams.qpMapMode = NV_ENC_QP_MAP_DELTA;
     }
+    if (stillImage) {
+        encodeConfig.rcParams.enableLookahead = 0;
+    }
     
     LOG(INFO) << NvEncoderInitParam().MainParamToString(&initializeParams);
     LOG(TRACE) << NvEncoderInitParam().FullParamToString(&initializeParams);
@@ -119,6 +122,8 @@ NvEncLiteUnbuffered::NvEncLiteUnbuffered(NV_ENC_DEVICE_TYPE eDeviceType, void *p
     }
     this->hEncoder = hEncoder;
     nEncoderBuffer = encodeConfig.frameIntervalP + encodeConfig.rcParams.lookaheadDepth + nExtraOutputDelay;
+    // still image has 0 frameIntervalP and lookaheadDepth, alloc one more frame to avoid nEncoderBuffer=0
+    nEncoderBuffer += stillImage ? 1 : 0;
     nOutputDelay = nEncoderBuffer - 1;
     for (int i = 0; i < nEncoderBuffer; i++) {
         NV_ENC_CREATE_BITSTREAM_BUFFER createBitstreamBuffer = { NV_ENC_CREATE_BITSTREAM_BUFFER_VER };

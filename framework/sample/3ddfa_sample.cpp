@@ -1423,6 +1423,8 @@ void encode_device_frame(NvEncLite* enc, uint8_t *device_frame, FILE *fpOut) {
     }
 }
 
+#define STREAM_NUM 3
+
 int main(int argc, char **argv){
     int iDevice = 0;
     if (argc >= 2) iDevice = atoi(argv[1]);
@@ -1437,14 +1439,18 @@ int main(int argc, char **argv){
     ck(cudaGetDeviceProperties(&prop, iDevice));
     cout << "Using " << prop.name << endl;
 
-    cudaStream_t stream = 0;
-    ck(cudaStreamCreate(&stream));
+    // cudaStream_t stream = 0;
+    // ck(cudaStreamCreate(&stream));
+
+    cudaStream_t stream_array[STREAM_NUM];
+    for (int i = 0; i < STREAM_NUM; i++) {
+        ck(cudaStreamCreate(&stream_array[i]));
+    }
 
     init_egl();
 
     // c10::Device torch_cuda_dev(at::kCUDA, iDevice);
     // c10::Stream torch_cuda_stream(torch_cuda_dev, );
-    at::cuda::CUDAStreamGuard guard(c10::cuda::getStreamFromExternal(stream, iDevice));
 
     auto tensor_options_cuda_float = torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCUDA);
     auto tensor_options_cuda_byte = torch::TensorOptions().dtype(torch::kByte).device(torch::kCUDA);
@@ -1533,15 +1539,23 @@ int main(int argc, char **argv){
     while(true) 
 #endif
     {
-        if (!(dec.GetNextFrame(dpImageNv12, frameWidth, true, stream)) || nFrame == 1000) {
+        bool finish = false;
+        for (int stream_count = 0; stream_count < STREAM_NUM; stream_count++)
+        {
+        cudaStream_t stream = stream_array[stream_count];
+        at::cuda::CUDAStreamGuard guard(c10::cuda::getStreamFromExternal(stream, iDevice));
+        if (!(dec.GetNextFrame(dpImageNv12, frameWidth, true, stream)) || nFrame == 9) {
 #ifdef PERF
             encode_device_frame(enc, NULL, fpOut);
             fclose(fpOut);
+            finish = true;
             break;
 #endif
         }
         // ck(cudaMemcpy(dpImageNv12, cv_image.data, frameWidth * frameHeight * 3 / 2, cudaMemcpyHostToDevice));
         nFrame++;
+        // if (nFrame == 100) ck(cudaProfilerStart());
+
 #ifdef NVTX_RANGE
         nvtxRangeId_t r1 = nvtxRangeStartA("Colorspcace conversion range");
 #endif
@@ -1590,11 +1604,26 @@ int main(int argc, char **argv){
         nvtxRangeId_t r4 = nvtxRangeStartA("GL draw range");
 #endif
         image_rgba = image_bgra.index({Slice(None), Slice(None), Slice(None), torch::tensor({2, 1, 0, 3})});
-        draw_gl(image_rgba, tddfa_gpu.vertex_data(), out_nv12, stream);
+        }
+        if (finish) break;
+
+        for (int stream_count = 0; stream_count < STREAM_NUM; stream_count++)
+        {
+            cudaStream_t stream = stream_array[stream_count];
+            draw_gl(image_rgba, tddfa_gpu.vertex_data(), out_nv12, stream);
+            
+    #ifdef NVTX_RANGE
+            nvtxRangeId_t r5 = nvtxRangeStartA("Encoding range");
+    #endif
+            encode_device_frame(enc, (uint8_t*)out_nv12.data_ptr(), fpOut);
+    #ifdef NVTX_RANGE
+            nvtxRangeEnd(r5);
+    #endif
+        }
 #ifdef NVTX_RANGE
         nvtxRangeEnd(r4);
 #endif
-    
+
         // DEBUG
         // stbi_write_png("nv12_debug_out.png", frameWidth, frameHeight, 2, out_nv12.to(torch::kCPU).data_ptr<uint8_t>(), frameWidth);
 
@@ -1602,16 +1631,11 @@ int main(int argc, char **argv){
         // ck(cudaMemcpy(h_nv12_out, out_nv12.data_ptr<uint8_t>(), frameWidth * frameHeight * 3 / 2, cudaMemcpyDeviceToHost));
         // stbi_write_png("nv12_debug_out.png", frameWidth, frameHeight, 2, h_nv12_out, frameWidth);
 
-#ifdef NVTX_RANGE
-        nvtxRangeId_t r5 = nvtxRangeStartA("Encoding range");
-#endif
-        encode_device_frame(enc, (uint8_t*)out_nv12.data_ptr(), fpOut);
-#ifdef NVTX_RANGE
-        nvtxRangeEnd(r5);
-#endif
+        // if (nFrame == 100) ck(cudaProfilerStop());
     }
     // fclose(fpOut);
-
+    
+    ck(cudaDeviceSynchronize());
     auto clock_stop = chrono::steady_clock::now();
     chrono::duration<double> diff_clock = clock_stop - clock_start;
     cout << "Average latency of " << nFrame << " runs: "<< diff_clock.count() / nFrame << " s\n";

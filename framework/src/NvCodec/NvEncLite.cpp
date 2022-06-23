@@ -15,8 +15,8 @@
 #include "NvCodec/NvEncLite.h"
 #include "NvCodec/NvCommon.h"
 
-NvEncLite::NvEncLite(CUcontext cuContext, int nWidth, int nHeight, NV_ENC_BUFFER_FORMAT eBufferFormat, NvEncoderInitParam *pInitParam, int nExtraOutputDelay) :
-    NvEncLiteUnbuffered(NV_ENC_DEVICE_TYPE_CUDA, cuContext, nWidth, nHeight, eBufferFormat, pInitParam, nExtraOutputDelay)
+NvEncLite::NvEncLite(CUcontext cuContext, int nWidth, int nHeight, NV_ENC_BUFFER_FORMAT eBufferFormat, NvEncoderInitParam *pInitParam, int nExtraOutputDelay, bool stillImage) :
+    NvEncLiteUnbuffered(NV_ENC_DEVICE_TYPE_CUDA, cuContext, nWidth, nHeight, eBufferFormat, pInitParam, nExtraOutputDelay, stillImage)
 {
     if (!hEncoder) {
         return;

@@ -59,7 +59,7 @@ public:
 
 protected:
     NvEncLiteUnbuffered(NV_ENC_DEVICE_TYPE eDeviceType, void *pDevice, int nWidth, int nHeight, NV_ENC_BUFFER_FORMAT eBufferFormat, 
-        NvEncoderInitParam *pInitParam, int nExtraOutputDelay);
+        NvEncoderInitParam *pInitParam, int nExtraOutputDelay, bool stillImage=false);
     bool DoEncode(NV_ENC_INPUT_PTR inputBuffer, std::vector<std::vector<uint8_t>> &vPacket, std::vector<NvPacketInfo> *pvPacketInfo, NV_ENC_PIC_PARAMS *pPicParams);
     void GetEncodedPacket(std::vector<NV_ENC_OUTPUT_PTR> &vOutputBuffer, std::vector<std::vector<uint8_t>> &vPacket, std::vector<NvPacketInfo> *pvPacketInfo, bool bOutputDelay);
     int GetPlaneWidthInBytes() {

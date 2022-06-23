@@ -21,7 +21,7 @@ extern simplelogger::Logger *logger;
 
 class NvEncLite : public NvEncLiteUnbuffered {
 public:
-    NvEncLite(CUcontext cuContext, int nWidth, int nHeight, NV_ENC_BUFFER_FORMAT eBufferFormat, NvEncoderInitParam *pInitParam = NULL, int nExtraOutputDelay = 0);
+    NvEncLite(CUcontext cuContext, int nWidth, int nHeight, NV_ENC_BUFFER_FORMAT eBufferFormat, NvEncoderInitParam *pInitParam = NULL, int nExtraOutputDelay = 0, bool stillImage = false);
     virtual ~NvEncLite();
     bool EncodeDeviceFrame(uint8_t *pDeviceFrame, int nFramePitch, std::vector<std::vector<uint8_t>> &vPacket, std::vector<NvPacketInfo> *pvPacketInfo = NULL, NV_ENC_PIC_PARAMS *pPicParams = NULL);
     bool EncodeHostFrame(uint8_t *pHostFrame, int nFramePitch, std::vector<std::vector<uint8_t>> &vPacket, std::vector<NvPacketInfo> *pvPacketInfo = NULL, NV_ENC_PIC_PARAMS *pPicParams = NULL);
