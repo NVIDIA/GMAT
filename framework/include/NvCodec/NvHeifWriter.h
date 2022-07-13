@@ -13,9 +13,12 @@ extern simplelogger::Logger *logger;
 
 class NvHeifWriter {
 public:
-    NvHeifWriter();
-    NvHeifWriter(GUID codec, bool stillImage);
-    bool write(std::vector<std::vector<uint8_t>> &nalUnits, char* outFilePath, bool useLastParameterSet = true);
+    NvHeifWriter(char* outFilePath);
+    NvHeifWriter(char* outFilePath, bool stillImage, GUID codec);
+    ~NvHeifWriter();
+    bool writeStillImage(std::vector<std::vector<uint8_t>> nalUnits, bool useLastParameterSet = true);
+    bool addImageToSequence(std::vector<std::vector<uint8_t>> nalUnits, bool primaryImage, bool useLastParameterSet = true);
+    bool writeSequence();
 
 private:
     HEIF::Writer* writer;
@@ -25,4 +28,6 @@ private:
     HEIF::FourCC majorBrand;
     HEIF::Array<HEIF::FourCC> compatibleBrands;
     HEIF::MediaFormat format;
+    HEIF::SequenceId vidTrackId, imgSeqId;
+    HEIF::DecoderConfigId outputDecoderConfigId;
 };

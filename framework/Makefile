@@ -6,7 +6,7 @@ TORCH_INCPATH = -I$(TORCH_PATH)/include/torch/csrc/api/include -I$(TORCH_PATH)/i
 GCC = g++
 NVCC = $(CUDA_PATH)/bin/nvcc
 NVCCFLAGS = -arch=sm_75 -g -std=c++14 -Xcompiler -fPIC
-CCFLAGS = -g -std=c++14 -fPIC
+CCFLAGS = -g -std=c++14 -fPIC -O3
 INCPATH := -I$(TORCH_PATH)/include/torch/csrc/api/include -I$(TORCH_PATH)/include
 # INCPATH ?= $(shell python3 -c "import torch.utils.cpp_extension as C; print('-I' + str.join(' -I', C.include_paths()))")
 INCLUDES := -isystem $(CUDA_PATH)/include -I./include/ -I$(CUDA_PATH)/include/ $(TORCH_INCPATH) -I../cv-cuda/include
@@ -30,15 +30,19 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 SO = $(ODIR)/libffgd.so
 TDDFA_BIN = $(ODIR)/tddfa
 HEIF_ENC = $(ODIR)/heifEnc
+NVJPEG_ENC = $(ODIR)/nvJpegEnc
 
 .PHONY: all clean
 # all: heif_enc nvjpeg_enc tddfa
-all: $(HEIF_ENC) $(TDDFA_BIN)
+all: $(HEIF_ENC) $(TDDFA_BIN) $(NVJPEG_ENC)
 
-$(TDDFA_BIN): $(TDDFA) SO
+$(TDDFA_BIN): $(TDDFA) $(SO)
 	$(GCC) -g -o $@ $< $(INCLUDES) -L$(ODIR) -lffgd $(LDFLAGS)
 
-$(HEIF_ENC): sample/heif_enc.cpp SO
+$(HEIF_ENC): sample/heifEnc.cpp $(SO)
+	$(GCC) -g -o $@ $< $(INCLUDES) -L$(ODIR) -lffgd $(LDFLAGS)
+
+$(NVJPEG_ENC): sample/nvJpegEnc.cpp $(SO)
 	$(GCC) -g -o $@ $< $(INCLUDES) -L$(ODIR) -lffgd $(LDFLAGS)
 
 $(SO): $(OBJ)
