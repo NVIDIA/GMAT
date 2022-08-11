@@ -6,8 +6,8 @@
 #include "NvCodec/NvHeifWriter.h"
 
 #include <cuda_runtime.h>
-#include <heif/heifreader.h>
-#include <heif/heifwriter.h>
+#include <heif/reader/heifreader.h>
+#include <heif/writer/heifwriter.h>
 
 using namespace std;
 using namespace HEIF;

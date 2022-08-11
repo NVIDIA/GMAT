@@ -3,8 +3,8 @@
 #include <dlfcn.h>
 #endif
 #include <vector>
-#include <heif/heifreader.h>
-#include <heif/heifwriter.h>
+#include <heif/reader/heifreader.h>
+#include <heif/writer/heifwriter.h>
 
 #include "NvCodec/NvEncLite.h"
 #include "NvCodec/NvCommon.h"
