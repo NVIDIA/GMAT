@@ -386,6 +386,7 @@ extern AVFilter ff_vf_scale2ref;
 extern AVFilter ff_vf_scdet;
 extern AVFilter ff_vf_scroll;
 extern AVFilter ff_vf_select;
+extern AVFilter ff_vf_select_gpu;
 extern AVFilter ff_vf_selectivecolor;
 extern AVFilter ff_vf_sendcmd;
 extern AVFilter ff_vf_separatefields;

@@ -4,7 +4,7 @@
 
 #include "NvCodec/NvHeifReader.h"
 
-NvHeifReader::NvHeifReader(char* inFilePath) {
+NvHeifReader::NvHeifReader(const char* inFilePath) {
         
     m_reader = HEIF::Reader::Create();
     if (m_reader->initialize(inFilePath) != HEIF::ErrorCode::OK)
@@ -17,16 +17,17 @@ NvHeifReader::NvHeifReader(char* inFilePath) {
     m_reader->getFileInformation(m_fileInfo);
     
     // Image sequence
-    if (m_fileInfo.features & FileFeatureEnum::HasImageSequence) {
+    if (m_fileInfo.features & HEIF::FileFeatureEnum::HasImageSequence) {
         for (const auto& trackProperties : m_fileInfo.trackInformation) {
             const auto sequenceId = trackProperties.trackId;
             LOG(INFO) << "Track ID " << sequenceId.get() << "\n";  // Context ID corresponds to the track ID
 
-            if (trackProperties.features & TrackFeatureEnum::IsMasterImageSequence
-                || trackProperties.features & TrackFeatureEnum::IsVideoTrack) {
+            if (trackProperties.features & HEIF::TrackFeatureEnum::IsMasterImageSequence
+                || trackProperties.features & HEIF::TrackFeatureEnum::IsVideoTrack) {
                 m_trackInfo = trackProperties;
                 m_index = 0;
-            }        
+                break;
+            }
         }
     }
 
@@ -56,7 +57,7 @@ bool NvHeifReader::readImage(uint8_t* &pktData, size_t &pktBytes) {
             }
 
             HEIF::DecoderConfiguration inputdecoderConfig{};
-            reader->getDecoderParameterSets(image.itemId, inputdecoderConfig);
+            m_reader->getDecoderParameterSets(image.itemId, inputdecoderConfig);
 
             size_t parameterSetBytes = 0;
             for (int i = 0; i < inputdecoderConfig.decoderSpecificInfo.size; i++) {
@@ -74,7 +75,7 @@ bool NvHeifReader::readImage(uint8_t* &pktData, size_t &pktBytes) {
                 psData += inputdecoderConfig.decoderSpecificInfo[i].decSpecInfoData.size;
             }
 
-            reader->getItemData(image.itemId, m_pktData + parameterSetBytes, pktBytes);
+            m_reader->getItemData(image.itemId, m_pktData + parameterSetBytes, pktBytes);
             pktData = m_pktData;
             break;
         }
@@ -82,29 +83,43 @@ bool NvHeifReader::readImage(uint8_t* &pktData, size_t &pktBytes) {
     return true;
 }
 
-bool readVideoFrame(uint8_t* &pktData, size_t &pktBytes) {
+bool NvHeifReader::readVideoFrame(std::vector<uint8_t*> &v_pktData, std::vector<size_t> &v_pktBytes) {
     // Array<ImageId> itemIds;
-    // reader->getMasterImages(itemIds);
+    // m_reader->getMasterImages(itemIds);
     // getDecoderCodeType(const ImageId& imageId, FourCC& type) const = 0;
 
     // for (const auto& trackProperties : m_fileInfo.trackInformation) {
-        const auto sequenceId = m_trackInfo.trackId;
-        LOG(INFO) << "Track ID " << sequenceId.get() << "\n";  // Context ID corresponds to the track ID
+    const auto sequenceId = m_trackInfo.trackId;
+    LOG(INFO) << "Track ID " << sequenceId.get();  // Context ID corresponds to the track ID
 
-        if (m_trackInfo.features & TrackFeatureEnum::IsMasterImageSequence
-            || m_trackInfo.features & TrackFeatureEnum::IsVideoTrack) {
-
-            for (const auto& sampleProperties : m_trackInfo.sampleProperties) {
-                // A sample might have decoding dependencies. The simplest way to handle this is just to always ask and
+    if (m_trackInfo.features & HEIF::TrackFeatureEnum::IsMasterImageSequence
+        || m_trackInfo.features & HEIF::TrackFeatureEnum::IsVideoTrack) {
+        
+        std::cout << "m_index: " << m_index << std::endl;
+        if (m_index >= m_trackInfo.sampleProperties.size) {
+            return true;
+        }
+        else {
+            auto sampleProperties = m_trackInfo.sampleProperties[m_index];
+            // A sample might have decoding dependencies. The simplest way to handle this is just to always ask and
                 // decode all dependencies.
-                Array<SequenceImageId> itemsToDecode;
-                reader->getDecodeDependencies(sequenceId, sampleProperties.sampleId, itemsToDecode);
-                for (auto dependencyId : itemsToDecode)
-                {
-                    reader->getItemDataWithDecoderParameters(sequenceId, dependencyId, m_pktData, pktBytes);
-                }
+            HEIF::Array<HEIF::SequenceImageId> itemsToDecode;
+            m_reader->getDecodeDependencies(sequenceId, sampleProperties.sampleId, itemsToDecode);
+            for (auto dependencyId : itemsToDecode)
+            {
+                uint8_t* pktData = new uint8_t[1024 * 1024];
+                size_t pktBytes = 1024  * 1024;
+                std::cout << "Demuxing packet " << dependencyId.get() << " from heif\n";
+                m_reader->getItemDataWithDecoderParameters(sequenceId, dependencyId, pktData, pktBytes);
+                v_pktData.push_back(pktData);
+                v_pktBytes.push_back(pktBytes);
+                std::cout << "Packet number: " << v_pktData.size() << ". Packet size: " << pktBytes << std::endl;
             }
-            pktData = m_pktData;
-        }        
+
+            m_index++;
+            return true;
+        }
+    }
+    return false;
     // }
 }

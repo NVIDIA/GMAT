@@ -69,17 +69,17 @@ static const char * GetVideoChromaFormatString(cudaVideoChromaFormat eChromaForm
 }
 
 int NvDecLite::HandleVideoSequence(CUVIDEOFORMAT *pVideoFormat) {
-    LOG(INFO) << "Video Input Information" << endl
-        << "\tCodec        : " << GetVideoCodecString(pVideoFormat->codec) << endl
-        << "\tFrame rate   : " << pVideoFormat->frame_rate.numerator << "/" << pVideoFormat->frame_rate.denominator 
-            << " = " << 1.0 * pVideoFormat->frame_rate.numerator / pVideoFormat->frame_rate.denominator << " fps" << endl
-        << "\tSequence     : " << (pVideoFormat->progressive_sequence ? "Progressive" : "Interlaced") << endl
-        << "\tCoded size   : [" << pVideoFormat->coded_width << ", " << pVideoFormat->coded_height << "]" << endl
-        << "\tDisplay area : [" << pVideoFormat->display_area.left << ", " << pVideoFormat->display_area.top << ", " 
-            << pVideoFormat->display_area.right << ", " << pVideoFormat->display_area.bottom << "]" << endl
-        << "\tChroma       : " << GetVideoChromaFormatString(pVideoFormat->chroma_format) << endl
-        << "\tBit depth    : " << pVideoFormat->bit_depth_luma_minus8 + 8
-    ;
+    // LOG(INFO) << "Video Input Information" << endl
+    //     << "\tCodec        : " << GetVideoCodecString(pVideoFormat->codec) << endl
+    //     << "\tFrame rate   : " << pVideoFormat->frame_rate.numerator << "/" << pVideoFormat->frame_rate.denominator 
+    //         << " = " << 1.0 * pVideoFormat->frame_rate.numerator / pVideoFormat->frame_rate.denominator << " fps" << endl
+    //     << "\tSequence     : " << (pVideoFormat->progressive_sequence ? "Progressive" : "Interlaced") << endl
+    //     << "\tCoded size   : [" << pVideoFormat->coded_width << ", " << pVideoFormat->coded_height << "]" << endl
+    //     << "\tDisplay area : [" << pVideoFormat->display_area.left << ", " << pVideoFormat->display_area.top << ", " 
+    //         << pVideoFormat->display_area.right << ", " << pVideoFormat->display_area.bottom << "]" << endl
+    //     << "\tChroma       : " << GetVideoChromaFormatString(pVideoFormat->chroma_format) << endl
+    //     << "\tBit depth    : " << pVideoFormat->bit_depth_luma_minus8 + 8
+    // ;
 
     int nDecodeSurface = pVideoFormat->min_num_decode_surfaces;;
 

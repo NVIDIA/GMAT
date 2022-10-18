@@ -405,6 +405,7 @@ OBJS-$(CONFIG_SCALE2REF_FILTER)              += vf_scale.o scale_eval.o
 OBJS-$(CONFIG_SCDET_FILTER)                  += vf_scdet.o
 OBJS-$(CONFIG_SCROLL_FILTER)                 += vf_scroll.o
 OBJS-$(CONFIG_SELECT_FILTER)                 += f_select.o
+OBJS-$(CONFIG_SELECT_GPU_FILTER)             += vf_select_gpu.o scene_sad_gpu.o
 OBJS-$(CONFIG_SELECTIVECOLOR_FILTER)         += vf_selectivecolor.o
 OBJS-$(CONFIG_SENDCMD_FILTER)                += f_sendcmd.o
 OBJS-$(CONFIG_SEPARATEFIELDS_FILTER)         += vf_separatefields.o

@@ -12,12 +12,12 @@ extern simplelogger::Logger *logger;
 
 class NvHeifReader {
     public:
-    NvHeifReader(char* outFilePath);
+    NvHeifReader(const char* outFilePath);
     ~NvHeifReader();
 
     bool readImage(uint8_t* &pktData, size_t &pktBytes);
 
-    bool readVideoFrame();
+    bool readVideoFrame(std::vector<uint8_t*> &v_pktData, std::vector<size_t> &v_pktBytes);
 
 private:
     HEIF::Reader *m_reader;

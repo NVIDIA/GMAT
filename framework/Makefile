@@ -2,13 +2,13 @@ CUDA_PATH = /usr/local/cuda
 # TRT_PATH = /usr/local/tensorrt7.2-cuda11.1
 TORCH_PATH ?= $(shell python -c "import torch; print(torch.__path__[0])")
 TORCH_INCPATH = -I$(TORCH_PATH)/include/torch/csrc/api/include -I$(TORCH_PATH)/include
-HEIF_INC_PATH ?= /usr/local/include/heif
+HEIF_INC_PATH ?= /usr/local/include/
 
 GCC = g++
 NVCC = $(CUDA_PATH)/bin/nvcc
 NVCCFLAGS = -arch=sm_75 -g -std=c++14 -Xcompiler -fPIC
 CCFLAGS = -g -std=c++14 -fPIC -O3
-INCPATH := -I$(TORCH_PATH)/include/torch/csrc/api/include -I$(TORCH_PATH)/include -I$(HEIF_INC_PATH) -I$(HEIF_INC_PATH)/common
+INCPATH := -I$(TORCH_PATH)/include/torch/csrc/api/include -I$(TORCH_PATH)/include -I$(HEIF_INC_PATH) -I$(HEIF_INC_PATH)/heif/common
 # INCPATH ?= $(shell python3 -c "import torch.utils.cpp_extension as C; print('-I' + str.join(' -I', C.include_paths()))")
 INCLUDES := -isystem $(CUDA_PATH)/include -I./include/ -I$(CUDA_PATH)/include/ $(TORCH_INCPATH) -I../cv-cuda/include $(INCPATH)
 LIBPATH := $(TORCH_PATH)/lib
