@@ -138,8 +138,8 @@ static const enum AVPixelFormat supported_fmts[] = {
     // AV_PIX_FMT_RGBPF32LE,
     // AV_PIX_FMT_RGBPF32CHW,
     // AV_PIX_FMT_NV21,
-    // AV_PIX_FMT_RGB24,
-    // AV_PIX_FMT_BGR24,
+    AV_PIX_FMT_RGB24,
+    AV_PIX_FMT_BGR24,
     AV_PIX_FMT_YUV420P,
     AV_PIX_FMT_0RGB32,
     AV_PIX_FMT_0BGR32
@@ -147,11 +147,12 @@ static const enum AVPixelFormat supported_fmts[] = {
 
 static std::unordered_map<std::string, CvtParam> const cvt_table =
 {
-    {"bgr2rgb", {COLOR_BGRA2RGBA, AV_PIX_FMT_RGB24, 4, 4}},
+    {"bgr2rgb", {COLOR_BGR2RGB, AV_PIX_FMT_RGB24, 3, 3}},
     {"rgb2bgr", {COLOR_RGB2BGR, AV_PIX_FMT_BGR24, 3, 3}},
-    // {"nv122rgb", {COLOR_YUV2RGB_NV12, AV_PIX_FMT_RGB24, 1, 3}},
+    {"nv122rgb", {COLOR_YUV2RGB_NV12, AV_PIX_FMT_RGB24, 1, 3}},
     {"nv122rgb0", {COLOR_YUV2RGBA_NV12, AV_PIX_FMT_RGB0, 1, 4}},
     {"yuv420p2rgb0", {COLOR_YUV2RGBA_IYUV, AV_PIX_FMT_RGB0, 1, 4}},
+    // {"yuv420p2rgb", {COLOR_YUV2RGB_IYUV, AV_PIX_FMT_RGB24, 1, 3}},
     {"rgb2yuv444p", {COLOR_RGB2YUV, AV_PIX_FMT_YUV444P, 3, 3}},
     // {"rgb2nv12", {COLOR_RGB2YUV, AV_PIX_FMT_NV12, 3, 1}}, // cv-cuda not support rgb2nv12 yet
 
@@ -534,14 +535,14 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
         ck(cudaMemcpy2DAsync(out->data[0], out->linesize[0], s->cv_output_buffer, src_width,
             src_width, dst_height, cudaMemcpyDeviceToDevice, stream));
     }
-    else if (!strcmp(s->in_desc->name, "nv12"))
+    else if (!strcmp(s->out_desc->name, "nv12"))
     {
         size_t dst_height = s->output_shape.H * 3 / 2;
         size_t src_width = s->output_shape.W * s->bytes_per_pixel;
         ck(cudaMemcpy2DAsync(out->data[0], out->linesize[0], s->cv_output_buffer, src_width,
             src_width, dst_height, cudaMemcpyDeviceToDevice, stream));
     }
-    else if (!strcmp(s->in_desc->name, "yuv444p"))
+    else if (!strcmp(s->out_desc->name, "yuv444p"))
     {
         size_t dst_height = s->output_shape.H;
         size_t dst_width = s->output_shape.W * s->bytes_per_pixel;
@@ -551,7 +552,7 @@ static int filter_frame(AVFilterLink *inlink, AVFrame *in)
         int h_shift = s->out_desc->log2_chroma_h;
         int w_shift = s->out_desc->log2_chroma_w;
         int u_offset = s->output_shape.W * s->bytes_per_pixel * dst_height;
-        ck(cudaMemcpy2DAsync(out->data[0], out->linesize[0], s->cv_input_buffer + u_offset, s->output_shape.W * s->bytes_per_pixel,
+        ck(cudaMemcpy2DAsync(out->data[1], out->linesize[1], s->cv_input_buffer + u_offset, s->output_shape.W * s->bytes_per_pixel,
             (s->cv_in_w >> w_shift) * s->bytes_per_pixel, (dst_height >> h_shift) * 2, cudaMemcpyDeviceToDevice, stream));
     }
     // if ((s->out_desc->flags & AV_PIX_FMT_FLAG_RGB) && (s->out_desc->flags & AV_PIX_FMT_FLAG_PLANAR)) // planar RGB
