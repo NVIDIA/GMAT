@@ -1,6 +1,6 @@
 # !/bin/bash
 CONF_FLAGS="--enable-nonfree --enable-cuda-nvcc --enable-libnpp --extra-cflags=-I/usr/local/cuda/include --extra-ldflags=-L/usr/local/cuda/lib64"
-CONF_FLAGS+=" --disable-static --enable-shared --enable-opengl --enable-libtensorrt --enable-libopencv --enable-libcv_cuda"
+# CONF_FLAGS+=" --disable-static --enable-shared --enable-opengl --enable-libtensorrt --enable-libopencv --enable-libcv_cuda"
 CONF_FLAGS+=" --disable-stripping"
 NVCC_FLAGS="-gencode arch=compute_86,code=sm_86 -lineinfo -Xcompiler -fPIC -I./"
 

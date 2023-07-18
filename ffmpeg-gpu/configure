@@ -5285,7 +5285,7 @@ fi
 
 add_cppflags -D_ISOC99_SOURCE
 add_cxxflags -D__STDC_CONSTANT_MACROS
-check_cxxflags -std=c++14 #|| check_cxxflags -std=c++0x
+check_cxxflags -std=c++14 || check_cxxflags -std=c++0x
 
 # some compilers silently accept -std=c11, so we also need to check that the
 # version macro is defined properly

@@ -587,7 +587,8 @@ int filter_frame_trt(AVFilterLink *inlink, AVFrame *in)
     AVFilterContext *ctx = inlink->dst;
     AVFilterLink *outlink = ctx->outputs[0];
     TensorrtContext *s = reinterpret_cast<TensorrtContext*>(ctx->priv);
-    AVHWDeviceContext *hw_device = (AVHWDeviceContext*)ctx->hw_device_ctx->data;
+    AVHWFramesContext *in_hwframe_ctx = (AVHWFramesContext*)inlink->hw_frames_ctx->data;
+    AVHWDeviceContext *hw_device = in_hwframe_ctx->device_ctx;
     AVCUDADeviceContext *hw_ctx = (AVCUDADeviceContext*)hw_device->hwctx;
     CudaFunctions *cu = hw_ctx->internal->cuda_dl;
 
