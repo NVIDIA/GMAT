@@ -1,0 +1,37 @@
+<Options>
+	<Gpu>0</Gpu>
+	<InputFile>bunny.mp4</InputFile>
+	<Session>1</Session>
+	<FpsLimit></FpsLimit>
+	
+	<AudioFilterDesc>atempo=0.7143</AudioFilterDesc>
+	<AudioCodec>ac3</AudioCodec>
+	<AudioBitRate>96000</AudioBitRate>
+	<AudioSampleRate>48000</AudioSampleRate>
+	
+	<UseSwVideoDecoder></UseSwVideoDecoder>
+	<VideoFilterDesc>minterpolate=fps=49/1:mi_mode=dup,setpts=1.4*PTS</VideoFilterDesc>
+	<VideoEncParam>fps=35:preset=p1:rc=vbr:lookahead=24</VideoEncParam>
+	
+	<Resolutions>
+		<Resolution>
+			<Width>1280</Width>
+			<Height>720</Height>
+			<VideoFilterDesc>hflip</VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=2.5M</VideoEncParamSuffix>
+			
+			<OutputFormat>mp4</OutputFormat>
+			<OutputFile>720p_#.mp4</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>960</Width>
+			<Height>540</Height>
+			<VideoFilterDesc>hflip</VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1.5M</VideoEncParamSuffix>
+			
+			<OutputFormat>mp4</OutputFormat>
+			<OutputFile>540p_#.mp4</OutputFile>
+		</Resolution>
+	</Resolutions>
+</Options>
+

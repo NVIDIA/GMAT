@@ -1,0 +1,161 @@
+<Options>
+	<Gpu>0</Gpu>
+	<InputFile>perf.h264</InputFile>
+	<Session>1</Session>
+	<FpsLimit></FpsLimit>
+	
+	<UseSwVideoDecoder></UseSwVideoDecoder>
+	<VideoEncParam>preset=p1:rc=vbr</VideoEncParam>
+	
+	<Resolutions>
+		<Resolution>
+			<Width>1920</Width>
+			<Height>1080</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=2500K</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_1080p_2500.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>1280</Width>
+			<Height>720</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=2000K</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_720p_2000.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>960</Width>
+			<Height>540</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1500K</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_540p_1500.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>740</Width>
+			<Height>360</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1000K</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_360p_1000.h264</OutputFile>
+		</Resolution>
+
+		<Resolution>
+			<Width>1920</Width>
+			<Height>1080</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1200K</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_1080p_1200.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>1280</Width>
+			<Height>720</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1000K</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_720p_1000.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>960</Width>
+			<Height>540</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=700K</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_540p_700.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>740</Width>
+			<Height>360</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=500K</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_360p_500.h264</OutputFile>
+		</Resolution>
+
+		<Resolution>
+			<Width>1920</Width>
+			<Height>1080</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=2500K:bf=2</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_1080p_2500_b2.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>1280</Width>
+			<Height>720</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=2000K:bf=2</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_720p_2000_b2.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>960</Width>
+			<Height>540</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1500K:bf=2</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_540p_1500_b2.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>740</Width>
+			<Height>360</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1000K:bf=2</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_360p_1000_b2.h264</OutputFile>
+		</Resolution>
+
+		<Resolution>
+			<Width>1920</Width>
+			<Height>1080</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=2500K:bf=4</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_1080p_2500_b4.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>1280</Width>
+			<Height>720</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=2000K:bf=4</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_720p_2000_b4.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>960</Width>
+			<Height>540</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1500K:bf=4</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_540p_1500_b4.h264</OutputFile>
+		</Resolution>
+		<Resolution>
+			<Width>740</Width>
+			<Height>360</Height>
+			<VideoFilterDesc></VideoFilterDesc>
+			<VideoEncParamSuffix>maxbitrate=1000K:bf=4</VideoEncParamSuffix>
+			
+			<OutputFormat>h264</OutputFormat>
+			<OutputFile>perf_360p_1000_b4.h264</OutputFile>
+		</Resolution>
+
+	</Resolutions>
+</Options>
+
