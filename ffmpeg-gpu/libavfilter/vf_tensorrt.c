@@ -109,7 +109,6 @@ static int config_output(AVFilterLink *outlink)
 
     switch (fmt) {
     case AV_PIX_FMT_RGBPF32LE:
-    case AV_PIX_FMT_RGBPF32CHW:
         s->channels = 3;
         break;
     case AV_PIX_FMT_NV12:
@@ -210,9 +209,9 @@ AVFilter ff_vf_tensorrt = {
     .priv_size     = sizeof(TensorrtContext),
     .init          = init,
     .uninit        = uninit,
-    .query_formats = query_formats,
     .inputs        = tensorrt_inputs,
     .outputs       = tensorrt_outputs,
+    FILTER_QUERY_FUNC(query_formats),
     .priv_class    = &tensorrt_class,
     .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE,
 };

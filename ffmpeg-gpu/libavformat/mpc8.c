@@ -23,6 +23,7 @@
 #include "libavcodec/unary.h"
 #include "apetag.h"
 #include "avformat.h"
+#include "demux.h"
 #include "internal.h"
 #include "avio_internal.h"
 
@@ -127,7 +128,11 @@ static void mpc8_get_chunk_header(AVIOContext *pb, int *tag, int64_t *size)
     pos = avio_tell(pb);
     *tag = avio_rl16(pb);
     *size = ffio_read_varlen(pb);
-    *size -= avio_tell(pb) - pos;
+    pos -= avio_tell(pb);
+    if (av_sat_add64(*size, pos) != (uint64_t)*size + pos) {
+        *size = -1;
+    } else
+        *size += pos;
 }
 
 static void mpc8_parse_seektable(AVFormatContext *s, int64_t off)
@@ -173,7 +178,13 @@ static void mpc8_parse_seektable(AVFormatContext *s, int64_t off)
     }
     seekd = get_bits(&gb, 4);
     for(i = 0; i < 2; i++){
-        pos = gb_get_v(&gb) + c->header_pos;
+        pos = gb_get_v(&gb);
+        if (av_sat_add64(pos, c->header_pos) != pos + (uint64_t)c->header_pos) {
+            av_free(buf);
+            return;
+        }
+
+        pos += c->header_pos;
         ppos[1 - i] = pos;
         av_add_index_entry(s->streams[0], pos, i, 0, 0, AVINDEX_KEYFRAME);
     }
@@ -201,8 +212,11 @@ static void mpc8_handle_chunk(AVFormatContext *s, int tag, int64_t chunk_pos, in
 
     switch(tag){
     case TAG_SEEKTBLOFF:
-        pos = avio_tell(pb) + size;
+        pos = avio_tell(pb);
         off = ffio_read_varlen(pb);
+        if (pos > INT64_MAX - size || off < 0 || off > INT64_MAX - chunk_pos)
+            return;
+        pos += size;
         mpc8_parse_seektable(s, chunk_pos + off);
         avio_seek(pb, pos, SEEK_SET);
         break;
@@ -217,6 +231,7 @@ static int mpc8_read_header(AVFormatContext *s)
     AVIOContext *pb = s->pb;
     AVStream *st;
     int tag = 0, ret;
+    int channels;
     int64_t size, pos;
 
     c->header_pos = avio_tell(pb);
@@ -260,7 +275,8 @@ static int mpc8_read_header(AVFormatContext *s)
     if ((ret = ff_get_extradata(s, st->codecpar, pb, 2)) < 0)
         return ret;
 
-    st->codecpar->channels = (st->codecpar->extradata[1] >> 4) + 1;
+    channels = (st->codecpar->extradata[1] >> 4) + 1;
+    st->codecpar->ch_layout.nb_channels = channels;
     st->codecpar->sample_rate = mpc8_rate[st->codecpar->extradata[0] >> 5];
     avpriv_set_pts_info(st, 64, 1152  << (st->codecpar->extradata[1]&3)*2, st->codecpar->sample_rate);
     st->start_time = 0;
@@ -311,17 +327,18 @@ static int mpc8_read_packet(AVFormatContext *s, AVPacket *pkt)
 static int mpc8_read_seek(AVFormatContext *s, int stream_index, int64_t timestamp, int flags)
 {
     AVStream *st = s->streams[stream_index];
+    FFStream *const sti = ffstream(st);
     int index = av_index_search_timestamp(st, timestamp, flags);
 
     if(index < 0) return -1;
-    if (avio_seek(s->pb, st->internal->index_entries[index].pos, SEEK_SET) < 0)
+    if (avio_seek(s->pb, sti->index_entries[index].pos, SEEK_SET) < 0)
         return -1;
-    ff_update_cur_dts(s, st, st->internal->index_entries[index].timestamp);
+    avpriv_update_cur_dts(s, st, sti->index_entries[index].timestamp);
     return 0;
 }
 
 
-AVInputFormat ff_mpc8_demuxer = {
+const AVInputFormat ff_mpc8_demuxer = {
     .name           = "mpc8",
     .long_name      = NULL_IF_CONFIG_SMALL("Musepack SV8"),
     .priv_data_size = sizeof(MPCContext),

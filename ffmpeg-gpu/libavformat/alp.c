@@ -19,6 +19,10 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#include "config_components.h"
+
+#include "libavutil/channel_layout.h"
 #include "avformat.h"
 #include "internal.h"
 #include "rawenc.h"
@@ -72,38 +76,39 @@ static int alp_read_header(AVFormatContext *s)
 {
     int ret;
     AVStream *st;
-    ALPHeader hdr;
+    ALPHeader *hdr = s->priv_data;
     AVCodecParameters *par;
 
-    if ((hdr.magic = avio_rl32(s->pb)) != ALP_TAG)
+    if ((hdr->magic = avio_rl32(s->pb)) != ALP_TAG)
         return AVERROR_INVALIDDATA;
 
-    hdr.header_size = avio_rl32(s->pb);
+    hdr->header_size = avio_rl32(s->pb);
 
-    if (hdr.header_size != 8 && hdr.header_size != 12) {
+    if (hdr->header_size != 8 && hdr->header_size != 12) {
         return AVERROR_INVALIDDATA;
     }
 
-    if ((ret = avio_read(s->pb, hdr.adpcm, sizeof(hdr.adpcm))) < 0)
+    if ((ret = avio_read(s->pb, hdr->adpcm, sizeof(hdr->adpcm))) < 0)
         return ret;
-    else if (ret != sizeof(hdr.adpcm))
+    else if (ret != sizeof(hdr->adpcm))
         return AVERROR(EIO);
 
-    if (strncmp("ADPCM", hdr.adpcm, sizeof(hdr.adpcm)) != 0)
+    if (strncmp("ADPCM", hdr->adpcm, sizeof(hdr->adpcm)) != 0)
         return AVERROR_INVALIDDATA;
 
-    hdr.unk1                    = avio_r8(s->pb);
-    hdr.num_channels            = avio_r8(s->pb);
+    hdr->unk1                   = avio_r8(s->pb);
+    hdr->num_channels           = avio_r8(s->pb);
 
-    if (hdr.header_size == 8) {
+    if (hdr->header_size == 8) {
         /* .TUN music file */
-        hdr.sample_rate         = 22050;
+        hdr->sample_rate        = 22050;
+
     } else {
         /* .PCM sound file */
-        hdr.sample_rate         = avio_rl32(s->pb);
+        hdr->sample_rate        = avio_rl32(s->pb);
     }
 
-    if (hdr.sample_rate > 44100) {
+    if (hdr->sample_rate > 44100) {
         avpriv_request_sample(s, "Sample Rate > 44100");
         return AVERROR_PATCHWELCOME;
     }
@@ -115,20 +120,15 @@ static int alp_read_header(AVFormatContext *s)
     par->codec_type             = AVMEDIA_TYPE_AUDIO;
     par->codec_id               = AV_CODEC_ID_ADPCM_IMA_ALP;
     par->format                 = AV_SAMPLE_FMT_S16;
-    par->sample_rate            = hdr.sample_rate;
-    par->channels               = hdr.num_channels;
+    par->sample_rate            = hdr->sample_rate;
 
-    if (hdr.num_channels == 1)
-        par->channel_layout     = AV_CH_LAYOUT_MONO;
-    else if (hdr.num_channels == 2)
-        par->channel_layout     = AV_CH_LAYOUT_STEREO;
-    else
+    if (hdr->num_channels > 2 || hdr->num_channels == 0)
         return AVERROR_INVALIDDATA;
 
+    av_channel_layout_default(&par->ch_layout, hdr->num_channels);
     par->bits_per_coded_sample  = 4;
-    par->bits_per_raw_sample    = 16;
     par->block_align            = 1;
-    par->bit_rate               = par->channels *
+    par->bit_rate               = par->ch_layout.nb_channels *
                                   par->sample_rate *
                                   par->bits_per_coded_sample;
 
@@ -146,17 +146,30 @@ static int alp_read_packet(AVFormatContext *s, AVPacket *pkt)
 
     pkt->flags         &= ~AV_PKT_FLAG_CORRUPT;
     pkt->stream_index   = 0;
-    pkt->duration       = ret * 2 / par->channels;
+    pkt->duration       = ret * 2 / par->ch_layout.nb_channels;
 
     return 0;
 }
 
-AVInputFormat ff_alp_demuxer = {
+static int alp_seek(AVFormatContext *s, int stream_index,
+                     int64_t pts, int flags)
+{
+    const ALPHeader *hdr = s->priv_data;
+
+    if (pts != 0)
+        return AVERROR(EINVAL);
+
+    return avio_seek(s->pb, hdr->header_size + 8, SEEK_SET);
+}
+
+const AVInputFormat ff_alp_demuxer = {
     .name           = "alp",
     .long_name      = NULL_IF_CONFIG_SMALL("LEGO Racers ALP"),
+    .priv_data_size = sizeof(ALPHeader),
     .read_probe     = alp_probe,
     .read_header    = alp_read_header,
-    .read_packet    = alp_read_packet
+    .read_packet    = alp_read_packet,
+    .read_seek      = alp_seek,
 };
 #endif
 
@@ -187,7 +200,7 @@ static int alp_write_init(AVFormatContext *s)
         return AVERROR(EINVAL);
     }
 
-    if (par->channels > 2) {
+    if (par->ch_layout.nb_channels > 2) {
         av_log(s, AV_LOG_ERROR, "A maximum of 2 channels are supported\n");
         return AVERROR(EINVAL);
     }
@@ -213,7 +226,7 @@ static int alp_write_header(AVFormatContext *s)
     avio_wl32(s->pb,  alp->type == ALP_TYPE_PCM ? 12 : 8);
     avio_write(s->pb, "ADPCM", 6);
     avio_w8(s->pb,    0);
-    avio_w8(s->pb,    par->channels);
+    avio_w8(s->pb,    par->ch_layout.nb_channels);
     if (alp->type == ALP_TYPE_PCM)
         avio_wl32(s->pb, par->sample_rate);
 
@@ -277,7 +290,7 @@ static const AVClass alp_muxer_class = {
     .version    = LIBAVUTIL_VERSION_INT
 };
 
-AVOutputFormat ff_alp_muxer = {
+const AVOutputFormat ff_alp_muxer = {
     .name           = "alp",
     .long_name      = NULL_IF_CONFIG_SMALL("LEGO Racers ALP"),
     .extensions     = "tun,pcm",

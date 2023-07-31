@@ -34,6 +34,13 @@ typedef struct IOContext {
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
 
+int64_t interrupt_counter;
+static int interrupt_cb(void *ctx)
+{
+    interrupt_counter --;
+    return interrupt_counter < 0;
+}
+
 static void error(const char *err)
 {
     fprintf(stderr, "%s", err);
@@ -160,7 +167,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
                 *strchr(extension, ',') = 0;
             av_strlcatf(filename, sizeof(filename), ".%s", extension);
         }
+
+        interrupt_counter = bytestream2_get_le32(&gbc);
+        avfmt->interrupt_callback.callback = interrupt_cb;
     }
+
+    // HLS uses a loop with sleep, we thus must breakout or we timeout
+    if (fmt && !strcmp(fmt->name, "hls"))
+        interrupt_counter &= 31;
 
     if (!io_buffer_size || size / io_buffer_size > maxblocks)
         io_buffer_size = size;
@@ -186,10 +200,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
     ret = avformat_open_input(&avfmt, filename, fmt, NULL);
     if (ret < 0) {
-        av_freep(&fuzzed_pb->buffer);
-        av_freep(&fuzzed_pb);
-        avformat_free_context(avfmt);
-        return 0;
+        goto fail;
     }
 
     ret = avformat_find_stream_info(avfmt, NULL);
@@ -203,10 +214,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         av_packet_unref(pkt);
     }
 
+fail:
     av_packet_free(&pkt);
     av_freep(&fuzzed_pb->buffer);
     avio_context_free(&fuzzed_pb);
     avformat_close_input(&avfmt);
 
     return 0;
+
 }

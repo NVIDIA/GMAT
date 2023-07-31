@@ -176,9 +176,13 @@ AudioConvert *swri_audio_convert_alloc(enum AVSampleFormat out_fmt,
         }
     }
 
-    if(HAVE_X86ASM && HAVE_MMX) swri_audio_convert_init_x86(ctx, out_fmt, in_fmt, channels);
-    if(ARCH_ARM)              swri_audio_convert_init_arm(ctx, out_fmt, in_fmt, channels);
-    if(ARCH_AARCH64)          swri_audio_convert_init_aarch64(ctx, out_fmt, in_fmt, channels);
+#if ARCH_X86 && HAVE_X86ASM && HAVE_MMX
+    swri_audio_convert_init_x86(ctx, out_fmt, in_fmt, channels);
+#elif ARCH_ARM
+    swri_audio_convert_init_arm(ctx, out_fmt, in_fmt, channels);
+#elif ARCH_AARCH64
+    swri_audio_convert_init_aarch64(ctx, out_fmt, in_fmt, channels);
+#endif
 
     return ctx;
 }
@@ -237,10 +241,10 @@ int swri_audio_convert(AudioConvert *ctx, AudioData *out, AudioData *in, int len
         const int ich= ctx->ch_map ? ctx->ch_map[ch] : ch;
         const int is= ich < 0 ? 0 : (in->planar ? 1 : in->ch_count) * in->bps;
         const uint8_t *pi= ich < 0 ? ctx->silence : in->ch[ich];
-        uint8_t       *po= out->ch[ch];
-        uint8_t *end= po + os*len;
+        uint8_t *end, *po = out->ch[ch];
         if(!po)
             continue;
+        end = po + os * len;
         ctx->conv_f(po+off*os, pi+off*is, is, os, end);
     }
     return 0;

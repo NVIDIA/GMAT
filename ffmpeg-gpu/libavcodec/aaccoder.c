@@ -397,7 +397,7 @@ static void search_for_quantizers_fast(AVCodecContext *avctx, AACEncContext *s,
                                        const float lambda)
 {
     int start = 0, i, w, w2, g;
-    int destbits = avctx->bit_rate * 1024.0 / avctx->sample_rate / avctx->channels * (lambda / 120.f);
+    int destbits = avctx->bit_rate * 1024.0 / avctx->sample_rate / avctx->ch_layout.nb_channels * (lambda / 120.f);
     float dists[128] = { 0 }, uplims[128] = { 0 };
     float maxvals[128];
     int fflag, minscaler;
@@ -414,11 +414,10 @@ static void search_for_quantizers_fast(AVCodecContext *avctx, AACEncContext *s,
         start = 0;
         for (g = 0; g < sce->ics.num_swb; g++) {
             int nz = 0;
-            float uplim = 0.0f, energy = 0.0f;
+            float uplim = 0.0f;
             for (w2 = 0; w2 < sce->ics.group_len[w]; w2++) {
                 FFPsyBand *band = &s->psy.ch[s->cur_channel].psy_bands[(w+w2)*16+g];
                 uplim += band->threshold;
-                energy += band->energy;
                 if (band->energy <= band->threshold || band->threshold == 0.0f) {
                     sce->zeroes[(w+w2)*16+g] = 1;
                     continue;
@@ -557,7 +556,7 @@ static void search_for_pns(AACEncContext *s, AVCodecContext *avctx, SingleChanne
     const float pns_transient_energy_r = FFMIN(0.7f, lambda / 140.f);
 
     int refbits = avctx->bit_rate * 1024.0 / avctx->sample_rate
-        / ((avctx->flags & AV_CODEC_FLAG_QSCALE) ? 2.0f : avctx->channels)
+        / ((avctx->flags & AV_CODEC_FLAG_QSCALE) ? 2.0f : avctx->ch_layout.nb_channels)
         * (lambda / 120.f);
 
     /** Keep this in sync with twoloop's cutoff selection */
@@ -565,7 +564,7 @@ static void search_for_pns(AACEncContext *s, AVCodecContext *avctx, SingleChanne
     int prev = -1000, prev_sf = -1;
     int frame_bit_rate = (avctx->flags & AV_CODEC_FLAG_QSCALE)
         ? (refbits * rate_bandwidth_multiplier * avctx->sample_rate / 1024)
-        : (avctx->bit_rate / avctx->channels);
+        : (avctx->bit_rate / avctx->ch_layout.nb_channels);
 
     frame_bit_rate *= 1.15f;
 
@@ -694,14 +693,14 @@ static void mark_pns(AACEncContext *s, AVCodecContext *avctx, SingleChannelEleme
     const float pns_transient_energy_r = FFMIN(0.7f, lambda / 140.f);
 
     int refbits = avctx->bit_rate * 1024.0 / avctx->sample_rate
-        / ((avctx->flags & AV_CODEC_FLAG_QSCALE) ? 2.0f : avctx->channels)
+        / ((avctx->flags & AV_CODEC_FLAG_QSCALE) ? 2.0f : avctx->ch_layout.nb_channels)
         * (lambda / 120.f);
 
     /** Keep this in sync with twoloop's cutoff selection */
     float rate_bandwidth_multiplier = 1.5f;
     int frame_bit_rate = (avctx->flags & AV_CODEC_FLAG_QSCALE)
         ? (refbits * rate_bandwidth_multiplier * avctx->sample_rate / 1024)
-        : (avctx->bit_rate / avctx->channels);
+        : (avctx->bit_rate / avctx->ch_layout.nb_channels);
 
     frame_bit_rate *= 1.15f;
 
@@ -843,25 +842,25 @@ static void search_for_ms(AACEncContext *s, ChannelElement *cpe)
                                                     sce0->ics.swb_sizes[g],
                                                     sce0->sf_idx[w*16+g],
                                                     sce0->band_type[w*16+g],
-                                                    lambda / band0->threshold, INFINITY, &b1, NULL, 0);
+                                                    lambda / (band0->threshold + FLT_MIN), INFINITY, &b1, NULL, 0);
                         dist1 += quantize_band_cost(s, &sce1->coeffs[start + (w+w2)*128],
                                                     R34,
                                                     sce1->ics.swb_sizes[g],
                                                     sce1->sf_idx[w*16+g],
                                                     sce1->band_type[w*16+g],
-                                                    lambda / band1->threshold, INFINITY, &b2, NULL, 0);
+                                                    lambda / (band1->threshold + FLT_MIN), INFINITY, &b2, NULL, 0);
                         dist2 += quantize_band_cost(s, M,
                                                     M34,
                                                     sce0->ics.swb_sizes[g],
                                                     mididx,
                                                     midcb,
-                                                    lambda / minthr, INFINITY, &b3, NULL, 0);
+                                                    lambda / (minthr + FLT_MIN), INFINITY, &b3, NULL, 0);
                         dist2 += quantize_band_cost(s, S,
                                                     S34,
                                                     sce1->ics.swb_sizes[g],
                                                     sididx,
                                                     sidcb,
-                                                    mslambda / (minthr * bmax), INFINITY, &b4, NULL, 0);
+                                                    mslambda / (minthr * bmax + FLT_MIN), INFINITY, &b4, NULL, 0);
                         B0 += b1+b2;
                         B1 += b3+b4;
                         dist1 -= b1+b2;

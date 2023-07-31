@@ -35,6 +35,7 @@
 #include "error_resilience.h"
 #include "mpegutils.h"
 #include "mpegvideo.h"
+#include "mpegvideodec.h"
 #include "golomb.h"
 #include "internal.h"
 #include "mathops.h"
@@ -42,6 +43,7 @@
 #include "qpeldsp.h"
 #include "rectangle.h"
 #include "thread.h"
+#include "threadframe.h"
 
 #include "rv34vlc.h"
 #include "rv34data.h"
@@ -79,7 +81,7 @@ static int rv34_decode_mv(RV34DecContext *r, int block_type);
  * @{
  */
 
-static VLC_TYPE table_data[117592][2];
+static VLCElem table_data[117592];
 
 /**
  * Generate VLC from codeword lengths.
@@ -1383,6 +1385,7 @@ static int rv34_decoder_alloc(RV34DecContext *r)
 
     if (!(r->cbp_chroma       && r->cbp_luma && r->deblock_coefs &&
           r->intra_types_hist && r->mb_type)) {
+        r->s.context_reinit = 1;
         rv34_decoder_free(r);
         return AVERROR(ENOMEM);
     }
@@ -1502,15 +1505,6 @@ av_cold int ff_rv34_decode_init(AVCodecContext *avctx)
 
     ff_h264_pred_init(&r->h, AV_CODEC_ID_RV40, 8, 1);
 
-#if CONFIG_RV30_DECODER
-    if (avctx->codec_id == AV_CODEC_ID_RV30)
-        ff_rv30dsp_init(&r->rdsp);
-#endif
-#if CONFIG_RV40_DECODER
-    if (avctx->codec_id == AV_CODEC_ID_RV40)
-        ff_rv40dsp_init(&r->rdsp);
-#endif
-
     if ((ret = rv34_decoder_alloc(r)) < 0) {
         ff_mpv_common_end(&r->s);
         return ret;
@@ -1530,7 +1524,7 @@ int ff_rv34_decode_update_thread_context(AVCodecContext *dst, const AVCodecConte
     if (dst == src || !s1->context_initialized)
         return 0;
 
-    if (s->height != s1->height || s->width != s1->width) {
+    if (s->height != s1->height || s->width != s1->width || s->context_reinit) {
         s->height = s1->height;
         s->width  = s1->width;
         if ((err = ff_mpv_common_frame_size_change(s)) < 0)
@@ -1579,13 +1573,13 @@ static int finish_frame(AVCodecContext *avctx, AVFrame *pict)
         if ((ret = av_frame_ref(pict, s->current_picture_ptr->f)) < 0)
             return ret;
         ff_print_debug_info(s, s->current_picture_ptr, pict);
-        ff_mpv_export_qp_table(s, pict, s->current_picture_ptr, FF_QSCALE_TYPE_MPEG1);
+        ff_mpv_export_qp_table(s, pict, s->current_picture_ptr, FF_MPV_QSCALE_TYPE_MPEG1);
         got_picture = 1;
     } else if (s->last_picture_ptr) {
         if ((ret = av_frame_ref(pict, s->last_picture_ptr->f)) < 0)
             return ret;
         ff_print_debug_info(s, s->last_picture_ptr, pict);
-        ff_mpv_export_qp_table(s, pict, s->last_picture_ptr, FF_QSCALE_TYPE_MPEG1);
+        ff_mpv_export_qp_table(s, pict, s->last_picture_ptr, FF_MPV_QSCALE_TYPE_MPEG1);
         got_picture = 1;
     }
 
@@ -1602,15 +1596,13 @@ static AVRational update_sar(int old_w, int old_h, AVRational sar, int new_w, in
     return sar;
 }
 
-int ff_rv34_decode_frame(AVCodecContext *avctx,
-                            void *data, int *got_picture_ptr,
-                            AVPacket *avpkt)
+int ff_rv34_decode_frame(AVCodecContext *avctx, AVFrame *pict,
+                         int *got_picture_ptr, AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     RV34DecContext *r = avctx->priv_data;
     MpegEncContext *s = &r->s;
-    AVFrame *pict = data;
     SliceInfo si;
     int i, ret;
     int slice_count;
@@ -1667,11 +1659,12 @@ int ff_rv34_decode_frame(AVCodecContext *avctx,
         if (s->mb_num_left > 0 && s->current_picture_ptr) {
             av_log(avctx, AV_LOG_ERROR, "New frame but still %d MB left.\n",
                    s->mb_num_left);
-            ff_er_frame_end(&s->er);
+            if (!s->context_reinit)
+                ff_er_frame_end(&s->er);
             ff_mpv_frame_end(s);
         }
 
-        if (s->width != si.width || s->height != si.height) {
+        if (s->width != si.width || s->height != si.height || s->context_reinit) {
             int err;
 
             av_log(s->avctx, AV_LOG_WARNING, "Changing dimensions to %dx%d\n",
@@ -1689,7 +1682,6 @@ int ff_rv34_decode_frame(AVCodecContext *avctx,
             err = ff_set_dimensions(s->avctx, s->width, s->height);
             if (err < 0)
                 return err;
-
             if ((err = ff_mpv_common_frame_size_change(s)) < 0)
                 return err;
             if ((err = rv34_decoder_realloc(r)) < 0)
@@ -1744,6 +1736,10 @@ int ff_rv34_decode_frame(AVCodecContext *avctx,
         }
         s->mb_x = s->mb_y = 0;
         ff_thread_finish_setup(s->avctx);
+    } else if (s->context_reinit) {
+        av_log(s->avctx, AV_LOG_ERROR, "Decoder needs full frames to "
+               "reinitialize (start MB is %d).\n", si.start);
+        return AVERROR_INVALIDDATA;
     } else if (HAVE_THREADS &&
                (s->avctx->active_thread_type & FF_THREAD_FRAME)) {
         av_log(s->avctx, AV_LOG_ERROR, "Decoder needs full frames in frame "

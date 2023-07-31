@@ -24,6 +24,7 @@
 #include "libavutil/parseutils.h"
 #include "libavutil/avstring.h"
 #include "avcodec.h"
+#include "codec_internal.h"
 #include "internal.h"
 
 #define MIN_ELEMENT ' '
@@ -302,11 +303,10 @@ static int ascii2index(const uint8_t *cpixel, int cpp)
     return n;
 }
 
-static int xpm_decode_frame(AVCodecContext *avctx, void *data,
+static int xpm_decode_frame(AVCodecContext *avctx, AVFrame *p,
                             int *got_frame, AVPacket *avpkt)
 {
     XPMDecContext *x = avctx->priv_data;
-    AVFrame *p=data;
     const uint8_t *end, *ptr;
     int ncolors, cpp, ret, i, j;
     int64_t size;
@@ -341,9 +341,6 @@ static int xpm_decode_frame(AVCodecContext *avctx, void *data,
     if ((ret = ff_set_dimensions(avctx, width, height)) < 0)
         return ret;
 
-    if ((ret = ff_get_buffer(avctx, p, 0)) < 0)
-        return ret;
-
     if (cpp <= 0 || cpp >= 5) {
         av_log(avctx, AV_LOG_ERROR, "unsupported/invalid number of chars per pixel: %d\n", cpp);
         return AVERROR_INVALIDDATA;
@@ -360,13 +357,16 @@ static int xpm_decode_frame(AVCodecContext *avctx, void *data,
 
     size *= 4;
 
-    av_fast_padded_malloc(&x->pixels, &x->pixels_size, size);
-    if (!x->pixels)
-        return AVERROR(ENOMEM);
-
     ptr += mod_strcspn(ptr, ",") + 1;
     if (end - ptr < 1)
         return AVERROR_INVALIDDATA;
+
+    if ((ret = ff_get_buffer(avctx, p, 0)) < 0)
+        return ret;
+
+    av_fast_padded_malloc(&x->pixels, &x->pixels_size, size);
+    if (!x->pixels)
+        return AVERROR(ENOMEM);
 
     for (i = 0; i < ncolors; i++) {
         const uint8_t *index;
@@ -436,13 +436,13 @@ static av_cold int xpm_decode_close(AVCodecContext *avctx)
     return 0;
 }
 
-AVCodec ff_xpm_decoder = {
-    .name           = "xpm",
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = AV_CODEC_ID_XPM,
+const FFCodec ff_xpm_decoder = {
+    .p.name         = "xpm",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("XPM (X PixMap) image"),
+    .p.type         = AVMEDIA_TYPE_VIDEO,
+    .p.id           = AV_CODEC_ID_XPM,
+    .p.capabilities = AV_CODEC_CAP_DR1,
     .priv_data_size = sizeof(XPMDecContext),
     .close          = xpm_decode_close,
-    .decode         = xpm_decode_frame,
-    .capabilities   = AV_CODEC_CAP_DR1,
-    .long_name      = NULL_IF_CONFIG_SMALL("XPM (X PixMap) image")
+    FF_CODEC_DECODE_CB(xpm_decode_frame),
 };

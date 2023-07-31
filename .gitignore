@@ -55,32 +55,35 @@ ffmpeg-gpu/.gitmodules
 ffmpeg-gpu/.mailmap
 ffmpeg-gpu/.travis.yml
 ffmpeg-gpu/.vscode/
-ffmpeg-gpu/3ddfa/801/
-ffmpeg-gpu/3ddfa/8203/
-ffmpeg-gpu/3ddfa/FaceBoxesProd.onnx
-ffmpeg-gpu/3ddfa/bfm_noneck_v3.onnx
-ffmpeg-gpu/3ddfa/mb1_120x120.onnx
-ffmpeg-gpu/AppEngineBuilder/
-ffmpeg-gpu/To4_jun_output.bmp
-ffmpeg-gpu/bgr_from_nv12.jpg
-ffmpeg-gpu/building.tif
-ffmpeg-gpu/core
-ffmpeg-gpu/debug_frames/
-ffmpeg-gpu/demo_JHH_3ddfa_out.mp4
-ffmpeg-gpu/demo_JHH_pose_out.mp4
-ffmpeg-gpu/ffmpeg_poses.npy
-ffmpeg-gpu/killer_noSR.nsys-rep
-ffmpeg-gpu/libavfilter/pose/libnpy/
-ffmpeg-gpu/nv-codec-headers/
-ffmpeg-gpu/nv-tensorrt-wrapper/
-ffmpeg-gpu/one_face_out.png
-ffmpeg-gpu/onnx_models/img2pose_v1_ft_300w_lp_static_nopost.onnx
-ffmpeg-gpu/onnx_models/optimized_img2pose_v1_ft_300w_lp_static_nopost.onnx
-ffmpeg-gpu/onnx_models/v57_str1_chshuffle_720_order.onnx
-ffmpeg-gpu/output/
-ffmpeg-gpu/scripts/
-ffmpeg-gpu/trt-wrapper-gitlab/
-ffmpeg-gpu/trt_engines/
+# ffmpeg-gpu/3ddfa/801/
+# ffmpeg-gpu/3ddfa/8203/
+# ffmpeg-gpu/3ddfa/FaceBoxesProd.onnx
+# ffmpeg-gpu/3ddfa/bfm_noneck_v3.onnx
+# ffmpeg-gpu/3ddfa/mb1_120x120.onnx
+# ffmpeg-gpu/AppEngineBuilder/
+# ffmpeg-gpu/To4_jun_output.bmp
+# ffmpeg-gpu/bgr_from_nv12.jpg
+# ffmpeg-gpu/building.tif
+# ffmpeg-gpu/core
+# ffmpeg-gpu/debug_frames/
+# ffmpeg-gpu/demo_JHH_3ddfa_out.mp4
+# ffmpeg-gpu/demo_JHH_pose_out.mp4
+# ffmpeg-gpu/ffmpeg_poses.npy
+# ffmpeg-gpu/killer_noSR.nsys-rep
+# ffmpeg-gpu/libavfilter/pose/libnpy/
+# ffmpeg-gpu/nv-codec-headers/
+# ffmpeg-gpu/nv-tensorrt-wrapper/
+# ffmpeg-gpu/one_face_out.png
+# ffmpeg-gpu/onnx_models/img2pose_v1_ft_300w_lp_static_nopost.onnx
+# ffmpeg-gpu/onnx_models/optimized_img2pose_v1_ft_300w_lp_static_nopost.onnx
+# ffmpeg-gpu/onnx_models/v57_str1_chshuffle_720_order.onnx
+# ffmpeg-gpu/output/
+# ffmpeg-gpu/scripts/
+# ffmpeg-gpu/trt-wrapper-gitlab/
+# ffmpeg-gpu/trt_engines/
+ffmpeg-gpu/*.yuv
+ffmpeg-gpu/*.png
+ffmpeg-gpu/test_out
 framework/bin/
 framework/core
 framework/gmon.out
@@ -99,5 +102,6 @@ heif/
 libtorch-cxx11-abi-shared-with-deps-1.11.0+cu113.zip
 metrans-bytedance.zip
 metrans-bytedance/
-metrans/
+metrans/.gitignore
+metrans/.git
 pytorch/

@@ -82,7 +82,7 @@ static int hpel_motion_search(MpegEncContext * s,
     if (mx > xmin && mx < xmax &&
         my > ymin && my < ymax) {
         int d= dmin;
-        const int index= (my<<ME_MAP_SHIFT) + mx;
+        const int index = my * (1 << ME_MAP_SHIFT) + mx;
         const int t= score_map[(index-(1<<ME_MAP_SHIFT))&(ME_MAP_SIZE-1)]
                      + (mv_penalty[bx   - pred_x] + mv_penalty[by-2 - pred_y])*c->penalty_factor;
         const int l= score_map[(index- 1               )&(ME_MAP_SIZE-1)]
@@ -95,13 +95,13 @@ static int hpel_motion_search(MpegEncContext * s,
 #if defined(ASSERT_LEVEL) && ASSERT_LEVEL > 1
         unsigned key;
         unsigned map_generation= c->map_generation;
-        key= ((my-1)<<ME_MAP_MV_BITS) + (mx) + map_generation;
+        key = (my - 1) * (1 << ME_MAP_MV_BITS) + (mx) + map_generation;
         av_assert2(c->map[(index-(1<<ME_MAP_SHIFT))&(ME_MAP_SIZE-1)] == key);
-        key= ((my+1)<<ME_MAP_MV_BITS) + (mx) + map_generation;
+        key = (my + 1) * (1 << ME_MAP_MV_BITS) + (mx) + map_generation;
         av_assert2(c->map[(index+(1<<ME_MAP_SHIFT))&(ME_MAP_SIZE-1)] == key);
-        key= ((my)<<ME_MAP_MV_BITS) + (mx+1) + map_generation;
+        key = (my) * (1 << ME_MAP_MV_BITS) + (mx + 1) + map_generation;
         av_assert2(c->map[(index+1)&(ME_MAP_SIZE-1)] == key);
-        key= ((my)<<ME_MAP_MV_BITS) + (mx-1) + map_generation;
+        key = (my) * (1 << ME_MAP_MV_BITS) + (mx - 1) + map_generation;
         av_assert2(c->map[(index-1)&(ME_MAP_SIZE-1)] == key);
 #endif
         if(t<=b){
@@ -246,7 +246,7 @@ static int qpel_motion_search(MpegEncContext * s,
         int bx=4*mx, by=4*my;
         int d= dmin;
         int i, nx, ny;
-        const int index= (my<<ME_MAP_SHIFT) + mx;
+        const int index = my * (1 << ME_MAP_SHIFT) + mx;
         const int t= score_map[(index-(1<<ME_MAP_SHIFT)  )&(ME_MAP_SIZE-1)];
         const int l= score_map[(index- 1                 )&(ME_MAP_SIZE-1)];
         const int r= score_map[(index+ 1                 )&(ME_MAP_SIZE-1)];
@@ -299,7 +299,8 @@ static int qpel_motion_search(MpegEncContext * s,
             const int cy2= b + t - 2*c;
             int cxy;
 
-            if(map[(index-(1<<ME_MAP_SHIFT)-1)&(ME_MAP_SIZE-1)] == ((my-1)<<ME_MAP_MV_BITS) + (mx-1) + map_generation){
+            if (map[(index - (1 << ME_MAP_SHIFT) - 1) & (ME_MAP_SIZE - 1)] ==
+                (my - 1) * (1 << ME_MAP_MV_BITS) + (mx - 1) + map_generation) {
                 tl= score_map[(index-(1<<ME_MAP_SHIFT)-1)&(ME_MAP_SIZE-1)];
             }else{
                 tl= cmp(s, mx-1, my-1, 0, 0, size, h, ref_index, src_index, cmpf, chroma_cmpf, flags);//FIXME wrong if chroma me is different
@@ -328,7 +329,7 @@ static int qpel_motion_search(MpegEncContext * s,
                     for(i=0; i<8; i++){
                         if(score < best[i]){
                             memmove(&best[i+1], &best[i], sizeof(int)*(7-i));
-                            memmove(&best_pos[i+1][0], &best_pos[i][0], sizeof(int)*2*(7-i));
+                            memmove(best_pos[i + 1], best_pos[i], sizeof(best_pos[0]) * (7 - i));
                             best[i]= score;
                             best_pos[i][0]= nx + 4*mx;
                             best_pos[i][1]= ny + 4*my;
@@ -857,7 +858,7 @@ static av_always_inline int diamond_search(MpegEncContext * s, int *best, int dm
    optimal mv.
  */
 static av_always_inline int epzs_motion_search_internal(MpegEncContext * s, int *mx_ptr, int *my_ptr,
-                             int P[10][2], int src_index, int ref_index, int16_t (*last_mv)[2],
+                             int P[10][2], int src_index, int ref_index, const int16_t (*last_mv)[2],
                              int ref_mv_scale, int flags, int size, int h)
 {
     MotionEstContext * const c= &s->me;
@@ -975,7 +976,7 @@ static av_always_inline int epzs_motion_search_internal(MpegEncContext * s, int 
 //this function is dedicated to the brain damaged gcc
 int ff_epzs_motion_search(MpegEncContext *s, int *mx_ptr, int *my_ptr,
                           int P[10][2], int src_index, int ref_index,
-                          int16_t (*last_mv)[2], int ref_mv_scale,
+                          const int16_t (*last_mv)[2], int ref_mv_scale,
                           int size, int h)
 {
     MotionEstContext * const c= &s->me;
@@ -991,7 +992,7 @@ int ff_epzs_motion_search(MpegEncContext *s, int *mx_ptr, int *my_ptr,
 
 static int epzs_motion_search2(MpegEncContext * s,
                              int *mx_ptr, int *my_ptr, int P[10][2],
-                             int src_index, int ref_index, int16_t (*last_mv)[2],
+                             int src_index, int ref_index, const int16_t (*last_mv)[2],
                              int ref_mv_scale, const int size)
 {
     MotionEstContext * const c= &s->me;

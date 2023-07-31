@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <string.h>
 #include "ttadata.h"
 
 const uint32_t ff_tta_shift_1[] = {
@@ -30,7 +31,8 @@ const uint32_t ff_tta_shift_1[] = {
     0x01000000, 0x02000000, 0x04000000, 0x08000000,
     0x10000000, 0x20000000, 0x40000000, 0x80000000,
     0x80000000, 0x80000000, 0x80000000, 0x80000000,
-    0x80000000, 0x80000000, 0x80000000, 0x80000000
+    0x80000000, 0x80000000, 0x80000000, 0x80000000,
+    0xFFFFFFFF
 };
 
 const uint32_t * const ff_tta_shift_16 = ff_tta_shift_1 + 4;

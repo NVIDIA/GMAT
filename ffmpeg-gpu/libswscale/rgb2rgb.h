@@ -26,10 +26,7 @@
 #ifndef SWSCALE_RGB2RGB_H
 #define SWSCALE_RGB2RGB_H
 
-#include <inttypes.h>
-
-#include "libavutil/avutil.h"
-#include "swscale.h"
+#include <stdint.h>
 
 /* A full collection of RGB to RGB(BGR) converters */
 extern void (*rgb24tobgr32)(const uint8_t *src, uint8_t *dst, int src_size);
@@ -78,6 +75,9 @@ void rgb15tobgr16(const uint8_t *src, uint8_t *dst, int src_size);
 void rgb15tobgr15(const uint8_t *src, uint8_t *dst, int src_size);
 void rgb12tobgr12(const uint8_t *src, uint8_t *dst, int src_size);
 void    rgb12to15(const uint8_t *src, uint8_t *dst, int src_size);
+
+// CUDA RGB/BGR to RGB/BGR converters
+void rgb24torgb24_cuda(const uint8_t *src[], uint8_t *dst[], int srcStride[], int dstStride[], int width, int height);
 
 void ff_rgb24toyv12_c(const uint8_t *src, uint8_t *ydst, uint8_t *udst,
                       uint8_t *vdst, int width, int height, int lumStride,
@@ -168,8 +168,10 @@ extern void (*yuyvtoyuv422)(uint8_t *ydst, uint8_t *udst, uint8_t *vdst, const u
                             int lumStride, int chromStride, int srcStride);
 
 void ff_sws_rgb2rgb_init(void);
+void ff_sws_rgb2rgb_init_hw(void);
 
 void rgb2rgb_init_aarch64(void);
 void rgb2rgb_init_x86(void);
+void rgb2rgb_init_cuda(void);
 
 #endif /* SWSCALE_RGB2RGB_H */

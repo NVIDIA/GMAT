@@ -76,7 +76,6 @@ AVFILTER_DEFINE_CLASS(format_cuda);
 static const enum AVPixelFormat supported_fmts[] = {
     AV_PIX_FMT_NV12,
     AV_PIX_FMT_RGBPF32LE,
-    AV_PIX_FMT_RGBPF32CHW,
 };
 
 static av_cold int init(AVFilterContext *ctx)
@@ -191,7 +190,6 @@ static int format_convert(FormatCudaContext *s, AVFrame *in, AVFrame *out)
         switch (s->out_fmt)
         {
             // case AV_PIX_FMT_GRAYF32LE:
-            case AV_PIX_FMT_RGBPF32CHW:
             case AV_PIX_FMT_RGBPF32LE:
                 if (s->in_fmt != AV_PIX_FMT_NV12) {
                     av_log(s, AV_LOG_ERROR, "Unsupported input/output pixel format combination.\n");
@@ -294,7 +292,8 @@ AVFilter ff_vf_format_cuda = {
     .priv_class = &format_cuda_class,
     .init = init,
     .uninit = uninit,
-    .query_formats =query_formats,
+    // .query_formats =query_formats,
+    FILTER_QUERY_FUNC(query_formats),
     .priv_size = sizeof(FormatCudaContext),
     .flags_internal = FF_FILTER_FLAG_HWFRAME_AWARE
 };

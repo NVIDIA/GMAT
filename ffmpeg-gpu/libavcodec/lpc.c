@@ -189,7 +189,7 @@ double ff_lpc_calc_ref_coefs_f(LPCContext *s, const float *samples, int len,
     compute_ref_coefs(autoc, order, ref, error);
     for (i = 0; i < order; i++)
         avg_err = (avg_err + error[i])/2.0f;
-    return signal/avg_err;
+    return avg_err ? signal/avg_err : NAN;
 }
 
 /**
@@ -314,8 +314,9 @@ av_cold int ff_lpc_init(LPCContext *s, int blocksize, int max_order,
     s->lpc_apply_welch_window = lpc_apply_welch_window_c;
     s->lpc_compute_autocorr   = lpc_compute_autocorr_c;
 
-    if (ARCH_X86)
-        ff_lpc_init_x86(s);
+#if ARCH_X86
+    ff_lpc_init_x86(s);
+#endif
 
     return 0;
 }

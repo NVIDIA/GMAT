@@ -20,6 +20,7 @@
 #include "libavutil/opt.h"
 
 #include "bsf.h"
+#include "bsf_internal.h"
 #include "cbs.h"
 #include "cbs_bsf.h"
 #include "cbs_av1.h"
@@ -28,6 +29,7 @@ typedef struct AV1MetadataContext {
     CBSBSFContext common;
 
     int td;
+    AV1RawOBU td_obu;
 
     int color_primaries;
     int transfer_characteristics;
@@ -107,12 +109,11 @@ static int av1_metadata_update_fragment(AVBSFContext *bsf, AVPacket *pkt,
                                         CodedBitstreamFragment *frag)
 {
     AV1MetadataContext *ctx = bsf->priv_data;
-    AV1RawOBU td, *obu;
     int err, i;
 
     for (i = 0; i < frag->nb_units; i++) {
         if (frag->units[i].type == AV1_OBU_SEQUENCE_HEADER) {
-            obu = frag->units[i].content;
+            AV1RawOBU *obu = frag->units[i].content;
             err = av1_metadata_update_sequence_header(bsf, &obu->obu.sequence_header);
             if (err < 0)
                 return err;
@@ -120,16 +121,12 @@ static int av1_metadata_update_fragment(AVBSFContext *bsf, AVPacket *pkt,
     }
 
     // If a Temporal Delimiter is present, it must be the first OBU.
-    if (frag->units[0].type == AV1_OBU_TEMPORAL_DELIMITER) {
+    if (frag->nb_units && frag->units[0].type == AV1_OBU_TEMPORAL_DELIMITER) {
         if (ctx->td == BSF_ELEMENT_REMOVE)
             ff_cbs_delete_unit(frag, 0);
     } else if (pkt && ctx->td == BSF_ELEMENT_INSERT) {
-        td = (AV1RawOBU) {
-            .header.obu_type = AV1_OBU_TEMPORAL_DELIMITER,
-        };
-
         err = ff_cbs_insert_unit_content(frag, 0, AV1_OBU_TEMPORAL_DELIMITER,
-                                         &td, NULL);
+                                         &ctx->td_obu, NULL);
         if (err < 0) {
             av_log(bsf, AV_LOG_ERROR, "Failed to insert Temporal Delimiter.\n");
             return err;
@@ -155,6 +152,12 @@ static const CBSBSFType av1_metadata_type = {
 
 static int av1_metadata_init(AVBSFContext *bsf)
 {
+    AV1MetadataContext *ctx = bsf->priv_data;
+
+    ctx->td_obu = (AV1RawOBU) {
+        .header.obu_type = AV1_OBU_TEMPORAL_DELIMITER,
+    };
+
     return ff_cbs_bsf_generic_init(bsf, &av1_metadata_type);
 }
 
@@ -192,7 +195,7 @@ static const AVOption av1_metadata_options[] = {
     { "colocated", "Top-left chroma sample position", 0, AV_OPT_TYPE_CONST,
         { .i64 = AV1_CSP_COLOCATED }, .flags = FLAGS, .unit = "csp" },
 
-    { "tick_rate", "Set display tick rate (num_units_in_display_tick / time_scale)",
+    { "tick_rate", "Set display tick rate (time_scale / num_units_in_display_tick)",
         OFFSET(tick_rate), AV_OPT_TYPE_RATIONAL,
         { .dbl = 0.0 }, 0, UINT_MAX, FLAGS },
     { "num_ticks_per_picture", "Set display ticks per picture for CFR streams",
@@ -217,12 +220,12 @@ static const enum AVCodecID av1_metadata_codec_ids[] = {
     AV_CODEC_ID_AV1, AV_CODEC_ID_NONE,
 };
 
-const AVBitStreamFilter ff_av1_metadata_bsf = {
-    .name           = "av1_metadata",
+const FFBitStreamFilter ff_av1_metadata_bsf = {
+    .p.name         = "av1_metadata",
+    .p.codec_ids    = av1_metadata_codec_ids,
+    .p.priv_class   = &av1_metadata_class,
     .priv_data_size = sizeof(AV1MetadataContext),
-    .priv_class     = &av1_metadata_class,
     .init           = &av1_metadata_init,
     .close          = &ff_cbs_bsf_generic_close,
     .filter         = &ff_cbs_bsf_generic_filter,
-    .codec_ids      = av1_metadata_codec_ids,
 };
